@@ -11,7 +11,7 @@ datasource db {
 // Seus models (User, Equipamento, etc) continuam abaixo...
 
 model User {
-  id        String     @id(map: "PK__User__3213E83F01485EB2") @default("CONVERT([nvarchar](450),newid())", map: "DF__User__id__5DCAEF64") @db.NVarChar(450)
+  id        String   @id @default(uuid())
   nome      String     @db.NVarChar(Max)
   sobrenome String     @db.NVarChar(Max)
   email     String     @unique(map: "UQ__User__AB6E6164B6D39C13") @db.NVarChar(450)

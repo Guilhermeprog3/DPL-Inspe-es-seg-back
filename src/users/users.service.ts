@@ -9,7 +9,7 @@ export class UsersService {
   constructor(private prisma: PrismaService) {}
 
   private readonly regionaisPermitidas = {
-    PI: ['NORTE', 'SUL', 'METRO'],
+    PI: ['NORTE', 'SUL', 'METROPOLITANA'],
     MA: ['NORTE', 'SUL', 'NORDESTE', 'SUDESTE']
   };
 

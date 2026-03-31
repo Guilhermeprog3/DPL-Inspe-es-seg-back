@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   console.log('>>> Iniciando NestJS...');
   const app = await NestFactory.create(AppModule);
+  app.enableCors();
   await app.listen(3001);
   console.log('🚀 Servidor rodando na porta 3001');
 }

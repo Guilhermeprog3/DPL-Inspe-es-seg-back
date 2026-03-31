@@ -23,6 +23,6 @@ export class CreateUserDto {
   @IsNotEmpty()
   regional: string;
 
-  @IsIn(['admin', 'inspetor', 'agente_cobli'])
+  @IsIn(['admin', 'inspetor', 'agente_cobli', 'sesmt']) // Adicione 'agente_cobli' e 'sesmt' aqui
   role: string;
 }
