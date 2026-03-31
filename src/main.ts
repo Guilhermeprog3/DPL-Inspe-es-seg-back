@@ -1,17 +1,16 @@
+// 1. PRIMEIRA COISA: Carregar as variáveis de ambiente
+import * as dotenv from 'dotenv';
+dotenv.config(); 
+
+// 2. DEPOIS: Importar o Nest e o AppModule
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  console.log('>>> Iniciando NestJS...');
   const app = await NestFactory.create(AppModule);
-
-  // Ativa a validação global
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true, // Remove campos que não estão no DTO
-    forbidNonWhitelisted: true, // Retorna erro se enviarem campos extras
-    transform: true, // Transforma os tipos automaticamente
-  }));
-
-  await app.listen(3000);
+  await app.listen(3001);
+  console.log('🚀 Servidor rodando na porta 3001');
 }
+
 bootstrap();

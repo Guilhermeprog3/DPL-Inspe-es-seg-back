@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
+import { ConfigModule } from '@nestjs/config'; // Adicione este import
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
@@ -8,12 +7,12 @@ import { MedidasModule } from './medidas/medidas.module';
 
 @Module({
   imports: [
-    PrismaModule,   // Compartilha a conexão com o banco
-    AuthModule,     // Lida com Login/JWT
-    UsersModule,    // Módulo de Usuários
-    MedidasModule,  // Módulo de Medidas Administrativas que você acabou de criar
+    // O ConfigModule DEVE vir antes do PrismaModule para carregar as variáveis
+    ConfigModule.forRoot({ isGlobal: true }), 
+    PrismaModule,
+    AuthModule,
+    UsersModule,
+    MedidasModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

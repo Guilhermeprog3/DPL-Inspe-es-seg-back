@@ -1,0 +1,1 @@
+console.log('>>> TESTE DE SCRIPT PURO: O NODE ESTÁ FUNCIONANDO! <<<');

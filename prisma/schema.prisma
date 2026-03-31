@@ -1,63 +1,65 @@
 generator client {
   provider = "prisma-client-js"
+  // Remova o engineType se houver, ou deixe como "library" se estiver no Windows
 }
 
 datasource db {
   provider = "sqlserver"
+  url      = env("DATABASE_URL") // ADICIONE ESTA LINHA
 }
 
+// Seus models (User, Equipamento, etc) continuam abaixo...
+
 model User {
-  id        String   @id @default(uuid())
-  nome      String
-  sobrenome String
-  email     String   @unique
-  password  String   // Campo adicionado para o hash da senha
-  uf        String   // 'PI' | 'MA'
-  regional  String   // NORTE, SUL, METRO, etc.
-  role      String   // 'admin' | 'inspetor' | 'agente_cobli'
-  ativo     Boolean  @default(true)
-  criadoEm  DateTime @default(now())
+  id        String     @id(map: "PK__User__3213E83F01485EB2") @default("CONVERT([nvarchar](450),newid())", map: "DF__User__id__5DCAEF64") @db.NVarChar(450)
+  nome      String     @db.NVarChar(Max)
+  sobrenome String     @db.NVarChar(Max)
+  email     String     @unique(map: "UQ__User__AB6E6164B6D39C13") @db.NVarChar(450)
+  password  String     @db.NVarChar(Max)
+  uf        String     @db.NVarChar(Max)
+  regional  String     @db.NVarChar(Max)
+  role      String     @db.NVarChar(Max)
+  ativo     Boolean    @default(true, map: "DF__User__ativo__5EBF139D")
+  criadoEm  DateTime   @default(now(), map: "DF__User__criadoEm__5FB337D6")
   inspecoes Inspecao[]
-  medidas Medida[] @relation("MedidasCriadas")
+  medidas   Medida[]   @relation("MedidasCriadas")
 }
 
 model Equipamento {
-  id                  String   @id @default(uuid())
-  codigo              String   @unique
-  tipo                String
-  uf                  String
-  regional            String
-  status              String   
-  inspecoes           Inspecao[]
+  id        String     @id(map: "PK__Equipame__3213E83FCDFB861B") @default("CONVERT([nvarchar](450),newid())", map: "DF__Equipamento__id__6383C8BA") @db.NVarChar(450)
+  codigo    String     @unique(map: "UQ__Equipame__40F9A20610839FCB") @db.NVarChar(450)
+  tipo      String     @db.NVarChar(Max)
+  uf        String     @db.NVarChar(Max)
+  regional  String     @db.NVarChar(Max)
+  status    String     @db.NVarChar(Max)
+  inspecoes Inspecao[]
 }
 
 model Inspecao {
-  id                String   @id @default(uuid())
-  equipamentoId     String
-  equipamento       Equipamento @relation(fields: [equipamentoId], references: [id])
-  inspetorId        String
-  inspetor          User     @relation(fields: [inspetorId], references: [id])
-  data              DateTime @default(now())
-  status            String   
-  uf                String
-  regional          String
-  respostas         String   @db.NVarChar(MAX) 
+  id            String      @id(map: "PK__Inspecao__3213E83F207C1B15") @default("CONVERT([nvarchar](450),newid())", map: "DF__Inspecao__id__66603565") @db.NVarChar(450)
+  equipamentoId String      @db.NVarChar(450)
+  inspetorId    String      @db.NVarChar(450)
+  data          DateTime    @default(now(), map: "DF__Inspecao__data__6754599E")
+  status        String      @db.NVarChar(Max)
+  uf            String      @db.NVarChar(Max)
+  regional      String      @db.NVarChar(Max)
+  respostas     String      @db.NVarChar(Max)
+  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
+  inspetor      User        @relation(fields: [inspetorId], references: [id], onDelete: Cascade)
 }
 
 model Medida {
-  id            String   @id @default(uuid())
-  data          DateTime @default(now())
-  colaborador   String
-  matricula     String
-  supervisor    String
-  tipo          String   // 'SEGURANÇA' | 'ADMINISTRATIVA'
-  medida        String   @db.NVarChar(MAX)
-  gravidade     String   // 'LEVE' | 'MÉDIA' | 'GRAVE' | 'GRAVÍSSIMA'
-  classificacao String
-  status        String   @default("EM ANDAMENTO") // 'CONCLUÍDO' | 'EM ANDAMENTO'
-  ocorrencia    String   @db.NVarChar(MAX)
-  
-  // Relação com o criador (Agente Cobli)
-  criadoPorId   String
-  criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id])
+  id            String   @id(map: "PK__Medida__3213E83F194B0396") @default("CONVERT([nvarchar](450),newid())", map: "DF__Medida__id__6C190EBB") @db.NVarChar(450)
+  data          DateTime @default(now(), map: "DF__Medida__data__6D0D32F4")
+  colaborador   String   @db.NVarChar(Max)
+  matricula     String   @db.NVarChar(Max)
+  supervisor    String   @db.NVarChar(Max)
+  tipo          String   @db.NVarChar(Max)
+  ocorrencia    String   @db.NVarChar(Max)
+  medida        String   @db.NVarChar(Max)
+  gravidade     String   @db.NVarChar(Max)
+  classificacao String   @db.NVarChar(Max)
+  status        String   @default("EM ANDAMENTO", map: "DF__Medida__status__6E01572D") @db.NVarChar(Max)
+  criadoPorId   String   @db.NVarChar(450)
+  criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id], onDelete: Cascade)
 }
