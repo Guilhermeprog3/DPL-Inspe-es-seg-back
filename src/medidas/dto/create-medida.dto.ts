@@ -21,4 +21,7 @@ export class CreateMedidaDto {
 
   @IsString() @IsNotEmpty()
   classificacao: string;
+
+  @IsString() @IsNotEmpty()
+  ocorrencia: string;
 }

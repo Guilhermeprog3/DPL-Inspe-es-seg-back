@@ -55,6 +55,7 @@ model Medida {
   gravidade     String   // 'LEVE' | 'MÉDIA' | 'GRAVE' | 'GRAVÍSSIMA'
   classificacao String
   status        String   @default("EM ANDAMENTO") // 'CONCLUÍDO' | 'EM ANDAMENTO'
+  ocorrencia    String   @db.NVarChar(MAX)
   
   // Relação com o criador (Agente Cobli)
   criadoPorId   String
