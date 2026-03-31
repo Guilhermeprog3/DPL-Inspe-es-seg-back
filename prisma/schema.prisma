@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlserver"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  nome      String
+  sobrenome String
+  email     String   @unique
+  password  String   // Campo adicionado para o hash da senha
+  uf        String   // 'PI' | 'MA'
+  regional  String   // NORTE, SUL, METRO, etc.
+  role      String   // 'admin' | 'inspetor' | 'agente_cobli'
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now())
+  inspecoes Inspecao[]
+  medidas Medida[] @relation("MedidasCriadas")
+}
+
+model Equipamento {
+  id                  String   @id @default(uuid())
+  codigo              String   @unique
+  tipo                String
+  uf                  String
+  regional            String
+  status              String   
+  inspecoes           Inspecao[]
+}
+
+model Inspecao {
+  id                String   @id @default(uuid())
+  equipamentoId     String
+  equipamento       Equipamento @relation(fields: [equipamentoId], references: [id])
+  inspetorId        String
+  inspetor          User     @relation(fields: [inspetorId], references: [id])
+  data              DateTime @default(now())
+  status            String   
+  uf                String
+  regional          String
+  respostas         String   @db.NVarChar(MAX) 
+}
+
+model Medida {
+  id            String   @id @default(uuid())
+  data          DateTime @default(now())
+  colaborador   String
+  matricula     String
+  supervisor    String
+  tipo          String   // 'SEGURANÇA' | 'ADMINISTRATIVA'
+  medida        String   @db.NVarChar(MAX)
+  gravidade     String   // 'LEVE' | 'MÉDIA' | 'GRAVE' | 'GRAVÍSSIMA'
+  classificacao String
+  status        String   @default("EM ANDAMENTO") // 'CONCLUÍDO' | 'EM ANDAMENTO'
+  
+  // Relação com o criador (Agente Cobli)
+  criadoPorId   String
+  criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id])
+}
