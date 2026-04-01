@@ -1,6 +1,6 @@
 // src/users/users.controller.ts
 
-import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Get, UseGuards,Query,NotFoundException, } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -19,4 +19,12 @@ export class UsersController {
   async findAll() {
     return this.usersService.findAll();
   }
+
+  @Get('by-email')
+async findByEmail(@Query('email') email: string) {
+  const user = await this.usersService.findByEmail(email);
+  if (!user) throw new NotFoundException('Usuário não encontrado');
+  return { uf: user.uf, regional: user.regional };
+}
+
 }

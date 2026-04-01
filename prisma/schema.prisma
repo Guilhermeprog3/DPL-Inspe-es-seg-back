@@ -11,7 +11,7 @@ datasource db {
 // Seus models (User, Equipamento, etc) continuam abaixo...
 
 model User {
-  id        String   @id @default(uuid())
+  id        String   @id @default(uuid()) @db.NVarChar(450)
   nome      String     @db.NVarChar(Max)
   sobrenome String     @db.NVarChar(Max)
   email     String     @unique(map: "UQ__User__AB6E6164B6D39C13") @db.NVarChar(450)
@@ -26,7 +26,7 @@ model User {
 }
 
 model Equipamento {
-  id        String     @id(map: "PK__Equipame__3213E83FCDFB861B") @default("CONVERT([nvarchar](450),newid())", map: "DF__Equipamento__id__6383C8BA") @db.NVarChar(450)
+  id        String   @id @default(uuid()) @db.NVarChar(450)
   codigo    String     @unique(map: "UQ__Equipame__40F9A20610839FCB") @db.NVarChar(450)
   tipo      String     @db.NVarChar(Max)
   uf        String     @db.NVarChar(Max)
@@ -36,7 +36,7 @@ model Equipamento {
 }
 
 model Inspecao {
-  id            String      @id(map: "PK__Inspecao__3213E83F207C1B15") @default("CONVERT([nvarchar](450),newid())", map: "DF__Inspecao__id__66603565") @db.NVarChar(450)
+  id        String   @id @default(uuid()) @db.NVarChar(450)
   equipamentoId String      @db.NVarChar(450)
   inspetorId    String      @db.NVarChar(450)
   data          DateTime    @default(now(), map: "DF__Inspecao__data__6754599E")
@@ -49,7 +49,7 @@ model Inspecao {
 }
 
 model Medida {
-  id            String   @id(map: "PK__Medida__3213E83F194B0396") @default("CONVERT([nvarchar](450),newid())", map: "DF__Medida__id__6C190EBB") @db.NVarChar(450)
+  id        String   @id @default(uuid()) @db.NVarChar(450)
   data          DateTime @default(now(), map: "DF__Medida__data__6D0D32F4")
   colaborador   String   @db.NVarChar(Max)
   matricula     String   @db.NVarChar(Max)
@@ -62,4 +62,7 @@ model Medida {
   status        String   @default("EM ANDAMENTO", map: "DF__Medida__status__6E01572D") @db.NVarChar(Max)
   criadoPorId   String   @db.NVarChar(450)
   criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id], onDelete: Cascade)
+  numeroInspecao String?  @db.NVarChar(Max)
+  diasSuspensao  Int?
+  nomeSupervisor String   @db.NVarChar(Max)
 }

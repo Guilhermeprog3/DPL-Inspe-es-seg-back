@@ -1,4 +1,8 @@
-import { IsNotEmpty, IsString, IsIn } from 'class-validator';
+import {IsNotEmpty, IsString, 
+  IsIn, 
+  IsOptional, 
+  IsInt, 
+  Min } from 'class-validator';
 
 export class CreateMedidaDto {
   @IsString() @IsNotEmpty()
@@ -9,6 +13,9 @@ export class CreateMedidaDto {
 
   @IsString() @IsNotEmpty()
   supervisor: string;
+  
+  @IsString() @IsNotEmpty()
+  nomeSupervisor: string
 
   @IsIn(['SEGURANÇA', 'ADMINISTRATIVA'])
   tipo: string;
@@ -24,4 +31,9 @@ export class CreateMedidaDto {
 
   @IsString() @IsNotEmpty()
   ocorrencia: string;
+
+  @IsOptional() 
+  @IsInt({ message: 'Os dias de suspensão devem ser um número inteiro' })
+  @Min(1, { message: 'A suspensão deve ser de no mínimo 1 dia' })
+  diasSuspensao?: number;
 }

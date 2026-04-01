@@ -36,4 +36,37 @@ export class MedidasService {
       data: dto,
     });
   }
+
+  async findOne(id: string) {
+    const medida = await this.prisma.medida.findUnique({
+      where: { id },
+    });
+
+    if (!medida) {
+      throw new NotFoundException(`Medida com ID ${id} não encontrada`);
+    }
+
+    return medida;
+  }
+
+  async remove(id: string, userId: string) {
+    // 1. Verifica se a medida existe
+    const medida = await this.prisma.medida.findUnique({
+      where: { id },
+    });
+
+    if (!medida) {
+      throw new NotFoundException('Medida não encontrada');
+    }
+
+    // 2. Segurança: Verifica se o registro pertence ao usuário logado
+    if (medida.criadoPorId !== userId) {
+      throw new ForbiddenException('Você não tem permissão para excluir esta medida');
+    }
+
+    // 3. Deleta de fato
+    return this.prisma.medida.delete({
+      where: { id },
+    });
+  }
 }
