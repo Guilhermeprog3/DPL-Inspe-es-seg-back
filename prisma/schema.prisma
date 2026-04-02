@@ -25,29 +25,52 @@ model User {
   medidas   Medida[]   @relation("MedidasCriadas")
 }
 
+model PontoInstalacao {
+  id                 String       @id @default(uuid()) @db.NVarChar(450)
+  nome               String       @db.NVarChar(Max)
+  uf                 String       @db.NVarChar(Max)
+  regional           String       @db.NVarChar(Max)
+  base               String       @db.NVarChar(Max)
+  qrCode             String       @unique @db.NVarChar(450)
+  ativo              Boolean      @default(true)
+  
+  equipamentoAtualId String?      @unique @db.NVarChar(450)
+  equipamentoAtual   Equipamento? @relation(fields: [equipamentoAtualId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  inspecoes          Inspecao[]
+}
+
 model Equipamento {
-  id        String   @id @default(uuid()) @db.NVarChar(450)
-  codigo    String     @unique(map: "UQ__Equipame__40F9A20610839FCB") @db.NVarChar(450)
-  tipo      String     @db.NVarChar(Max)
-  uf        String     @db.NVarChar(Max)
-  regional  String     @db.NVarChar(Max)
-  status    String     @db.NVarChar(Max)
-  inspecoes Inspecao[]
+  id              String           @id @default(uuid()) @db.NVarChar(450)
+  codigo          String           @unique @db.NVarChar(450)
+  tipo            String           @db.NVarChar(Max)
+  status          String           @db.NVarChar(Max)
+  
+  pontoInstalacao PontoInstalacao?
+  inspecoes       Inspecao[]
 }
 
 model Inspecao {
-  id        String   @id @default(uuid()) @db.NVarChar(450)
-  equipamentoId String      @db.NVarChar(450)
-  inspetorId    String      @db.NVarChar(450)
-  data          DateTime    @default(now(), map: "DF__Inspecao__data__6754599E")
-  status        String      @db.NVarChar(Max)
-  uf            String      @db.NVarChar(Max)
-  regional      String      @db.NVarChar(Max)
-  respostas     String      @db.NVarChar(Max)
-  equipamento   Equipamento @relation(fields: [equipamentoId], references: [id], onDelete: Cascade)
-  inspetor      User        @relation(fields: [inspetorId], references: [id], onDelete: Cascade)
+  id              String          @id @default(uuid()) @db.NVarChar(450)
+  data            DateTime        @default(now())
+  status          String          @db.NVarChar(Max)
+  respostas       String          @db.NVarChar(Max)
+  uf              String          @db.NVarChar(Max)
+  regional        String          @db.NVarChar(Max)
+  base            String          @db.NVarChar(Max)
+  localNome       String          @db.NVarChar(Max)
+  
+  pontoId         String          @db.NVarChar(450)
+  // Adicionado NoAction para evitar caminhos múltiplos de cascata
+  ponto           PontoInstalacao @relation(fields: [pontoId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  equipamentoId   String          @db.NVarChar(450)
+  // Adicionado NoAction para evitar caminhos múltiplos de cascata
+  equipamento     Equipamento     @relation(fields: [equipamentoId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+  
+  inspetorId      String          @db.NVarChar(450)
+  inspetor        User            @relation(fields: [inspetorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
 }
-
 model Medida {
   id        String   @id @default(uuid()) @db.NVarChar(450)
   data          DateTime @default(now(), map: "DF__Medida__data__6D0D32F4")
