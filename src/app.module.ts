@@ -4,6 +4,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MedidasModule } from './medidas/medidas.module';
+import { TaxaContatoModule } from './taxa-contato/taxa-contato.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { MedidasModule } from './medidas/medidas.module';
     AuthModule,
     UsersModule,
     MedidasModule,
+    TaxaContatoModule
   ],
 })
 export class AppModule {}

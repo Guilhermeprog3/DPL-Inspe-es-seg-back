@@ -66,3 +66,25 @@ model Medida {
   diasSuspensao  Int?
   nomeSupervisor String   @db.NVarChar(Max)
 }
+
+
+model TaxaContato {
+  chave        Int      @id
+  chapa        String?
+  nome         String?
+  cpf          String?
+  funcao       String?  @map("FUNCAO")
+  secao        String?
+  codsituacao  String?
+  local        String?
+  regional     String?
+  area         String?
+  equipe       String?
+  supervisor   String?
+  data         String?
+  base         String?
+  email        String?
+  filial       String?
+
+  @@map("taxa de contato")
+}
