@@ -21,7 +21,12 @@ export class CreatePontoDto {
   @IsNotEmpty()
   qrCode!: string;
 
+  /**
+   * ID do equipamento a ser vinculado no momento da criação.
+   * O equipamento precisa estar sem ponto vinculado (pontoInstalacao === null).
+   * Se omitido ou null, o ponto é criado vazio.
+   */
   @IsUUID()
   @IsOptional()
-  equipamentoAtualId?: string; // Aqui o '?' já resolve pois é opcional
+  equipamentoAtualId?: string | null;
 }

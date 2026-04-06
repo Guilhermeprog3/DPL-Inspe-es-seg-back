@@ -7,6 +7,6 @@ import { PrismaModule } from '../prisma/prisma.module';
   imports: [PrismaModule],
   controllers: [PontosController],
   providers: [PontosService],
-  exports: [PontosService]
+  exports: [PontosService],
 })
 export class PontosModule {}

@@ -41,14 +41,44 @@ model PontoInstalacao {
 }
 
 model Equipamento {
-  id              String           @id @default(uuid()) @db.NVarChar(450)
-  codigo          String           @unique @db.NVarChar(450)
-  tipo            String           @db.NVarChar(Max)
-  status          String           @db.NVarChar(Max)
-  
+  id    String @id @default(uuid()) @db.NVarChar(450)
+
+  // ── Identificação principal ───────────────────────────────────────────────
+  // Para extintores, 'codigo' recebe o Nº de Série do Cilindro.
+  // Para os demais tipos, recebe o Nº de Série / Patrimônio.
+  codigo  String @unique @db.NVarChar(450)
+
+  tipo    String @db.NVarChar(Max)
+  status  String @db.NVarChar(Max)
+  uf      String @db.NVarChar(Max)
+
+  // ── Descrição livre ───────────────────────────────────────────────────────
+  nome    String? @db.NVarChar(Max) // Nome / Descrição informada no cadastro
+
+  // ── Campos específicos do Extintor ────────────────────────────────────────
+  extintorClasse  String?   @db.NVarChar(Max)  // ABC, BC, AB, A, D, K ou manual
+  extintorCarga   Decimal?  @db.Decimal(8, 2)  // kg
+  agente          String?   @db.NVarChar(Max)  // Pó ABC, CO₂, Água etc.
+  serieInmetro    String?   @db.NVarChar(450)  // Nº do Selo INMETRO
+  serieCilindro   String?   @db.NVarChar(450)  // Nº de Série do Cilindro (= codigo p/ extintores)
+  proximaRecarga  DateTime? // Validade da Recarga
+
+  // ── Campos genéricos (demais tipos) ──────────────────────────────────────
+  // 'agente' já cobre o campo livre de agente/especificação dos não-extintores
+
+  // ── Campos legados (mantidos para compatibilidade) ────────────────────────
+  fabricante      String?   @db.NVarChar(Max)
+  modelo          String?   @db.NVarChar(Max)
+  capacidade      String?   @db.NVarChar(Max)
+  dataFabricacao  DateTime?
+  ultimaRecarga   DateTime?
+  ultimaInspecao  DateTime?
+  proximaInspecao DateTime?
+
   pontoInstalacao PontoInstalacao?
   inspecoes       Inspecao[]
 }
+
 
 model Inspecao {
   id              String          @id @default(uuid()) @db.NVarChar(450)
