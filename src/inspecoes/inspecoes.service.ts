@@ -12,13 +12,10 @@ export class InspecoesService {
       include: { equipamentoAtual: true },
     });
 
-    // Validação do Ponto
     if (!ponto) {
       throw new NotFoundException('Ponto de instalação não encontrado.');
     }
 
-    // EXTRAÇÃO PARA CONSTANTE: Resolve o erro 'ponto.equipamentoAtual is possibly null'
-    // Ao validar a constante, o TS garante que ela não é nula dentro da transação.
     const equipamento = ponto.equipamentoAtual;
 
     if (!equipamento) {
@@ -27,25 +24,24 @@ export class InspecoesService {
       );
     }
 
-    // Inicia a transação para garantir que a inspeção e a atualização do status ocorram juntas
     return this.prisma.$transaction(async (tx) => {
       
-      // 2. Criar o registo da Inspeção
+      // 2. Criar o registro da Inspeção
       const inspecao = await tx.inspecao.create({
         data: {
-          status: data.status, // Ex: 'APROVADO', 'REPROVADO', 'ATENCAO'
+          status: data.status,
           respostas: JSON.stringify(data.respostas),
           uf: ponto.uf,
           regional: ponto.regional,
           base: ponto.base,
           localNome: ponto.nome,
           pontoId: ponto.id,
-          equipamentoId: equipamento.id, // Utiliza a constante validada
+          equipamentoId: equipamento.id,
           inspetorId: userId,
         },
       });
 
-      // 3. Atualizar o Status do Equipamento baseado no resultado da inspeção
+      // 3. Atualizar o Status do Equipamento
       let novoStatusEquipamento = equipamento.status;
 
       if (data.status === 'REPROVADO' || data.status === 'CANCELADA') {
@@ -59,25 +55,21 @@ export class InspecoesService {
         data: { status: novoStatusEquipamento },
       });
 
-      // 4. Se houver Ação Corretiva (Medida), cria automaticamente
-      if (data.acaoCorretiva) {
-        await tx.medida.create({
-          data: {
-            tipo: 'CORRETIVA',
-            ocorrencia: `Não conformidade detetada na inspeção ${inspecao.id}`,
-            medida: data.acaoCorretiva.descricao,
-            // Converte a string de data vinda do front para objeto Date
-            data: data.acaoCorretiva.prazo ? new Date(data.acaoCorretiva.prazo) : new Date(),
-            colaborador: equipamento.codigo,
-            matricula: 'SISTEMA',
-            supervisor: 'A DEFINIR',
-            gravidade: 'ALTA',
-            classificacao: 'SEGURANÇA PCI',
-            status: 'EM ANDAMENTO',
-            criadoPorId: userId,
-            numeroInspecao: inspecao.id,
-            nomeSupervisor: 'A DEFINIR',
-          },
+      // 4. Processar Múltiplas AÇÕES (Independente de Medida)
+      // data.acoesCorretivas vem do seu componente de abas do front
+      if (data.acoesCorretivas && Array.isArray(data.acoesCorretivas)) {
+        await tx.acaoCorretiva.createMany({
+          data: data.acoesCorretivas.map((acao) => ({
+            inspecaoId: inspecao.id,
+            status: 'A ATRIBUIR', // Forçado conforme solicitado
+            dataVencimento: acao.dataVencimento ? new Date(acao.dataVencimento) : null,
+            titulo: acao.titulo,
+            descricao: acao.descricao,
+            numNC: acao.numNC || null,
+            empresaResponsavel: acao.empresaResponsavel || 'DPL',
+            nomeResponsavel: 'A ATRIBUIR',
+            emailsCopia: acao.emailsCopia || null,
+          })),
         });
       }
 
@@ -85,29 +77,25 @@ export class InspecoesService {
     });
   }
 
-  /**
-   * Retorna todas as inspeções para o Dashboard
-   */
   async listarTodas() {
     return this.prisma.inspecao.findMany({
       include: {
         inspetor: { select: { nome: true, sobrenome: true } },
         equipamento: { select: { codigo: true, tipo: true } },
         ponto: true,
+        acoesCorretivas: true, // Traz as ações vinculadas
       },
       orderBy: { data: 'desc' },
     });
   }
 
-  /**
-   * Retorna o histórico de inspeções de um local específico
-   */
   async buscarHistoricoPorPonto(pontoId: string) {
     return this.prisma.inspecao.findMany({
       where: { pontoId },
       include: {
         inspetor: { select: { nome: true, sobrenome: true } },
         equipamento: true,
+        acoesCorretivas: true,
       },
       orderBy: { data: 'desc' },
     });

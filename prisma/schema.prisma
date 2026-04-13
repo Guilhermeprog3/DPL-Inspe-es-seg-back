@@ -40,6 +40,22 @@ model PontoInstalacao {
   inspecoes          Inspecao[]
 }
 
+model AcaoCorretiva {
+  id                 String    @id @default(uuid()) @db.NVarChar(450)
+  status             String    @default("Em Andamento") @db.NVarChar(Max)
+  dataVencimento     DateTime?
+  titulo             String    @db.NVarChar(Max)
+  descricao          String    @db.NVarChar(Max)
+  numNC              String?   @db.NVarChar(Max)
+  nomeResponsavel    String    @db.NVarChar(Max)
+  emailsCopia        String?   @db.NVarChar(Max)
+  criadoEm           DateTime  @default(now())
+
+  // Relacionamentos
+  inspecaoId         String    @db.NVarChar(450)
+  inspecao           Inspecao  @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
+}
+
 model Equipamento {
   id    String @id @default(uuid()) @db.NVarChar(450)
 
@@ -100,6 +116,8 @@ model Inspecao {
   
   inspetorId      String          @db.NVarChar(450)
   inspetor        User            @relation(fields: [inspetorId], references: [id], onUpdate: NoAction, onDelete: NoAction)
+
+  acoesCorretivas AcaoCorretiva[]
 }
 model Medida {
   id        String   @id @default(uuid()) @db.NVarChar(450)
