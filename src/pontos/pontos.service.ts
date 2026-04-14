@@ -69,14 +69,27 @@ export class PontosService {
   }
 
   // ── Buscar por QR Code ─────────────────────────────────────────────────────
-  async findByQrCode(qrCode: string) {
-    const ponto = await this.prisma.pontoInstalacao.findUnique({
-      where: { qrCode },
+  // pontos.service.ts
+
+async findByQrCode(code: string) {
+  // 1. Tenta buscar pelo campo qrCode (Ex: 'EXT-001')
+  let ponto = await this.prisma.pontoInstalacao.findUnique({
+    where: { qrCode: code },
+    include: PONTO_INCLUDE,
+  });
+
+  // 2. Se não achou e o código tem formato de UUID, tenta buscar pelo ID
+  if (!ponto && /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(code)) {
+    ponto = await this.prisma.pontoInstalacao.findUnique({
+      where: { id: code },
       include: PONTO_INCLUDE,
     });
-    if (!ponto) throw new NotFoundException('Ponto não encontrado para este QR Code.');
-    return ponto;
   }
+
+  if (!ponto) throw new NotFoundException('Ponto não encontrado para este QR Code.');
+  
+  return ponto;
+}
 
   // ── Listar equipamentos DISPONÍVEIS (sem ponto vinculado) ──────────────────
   // Usado pela aba de Vínculo no frontend para exibir apenas equipamentos livres

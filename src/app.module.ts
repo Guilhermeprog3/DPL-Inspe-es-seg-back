@@ -7,6 +7,7 @@ import { MedidasModule } from './medidas/medidas.module';
 import { TaxaContatoModule } from './taxa-contato/taxa-contato.module';
 import { EquipamentosModule } from './equipamentos/equipamentos.module';
 import { PontosModule } from './pontos/pontos.module';
+import { InspecoesModule } from './inspecoes/inspecoes.module';
 @Module({
   imports: [
     // O ConfigModule DEVE vir antes do PrismaModule para carregar as variáveis
@@ -17,7 +18,8 @@ import { PontosModule } from './pontos/pontos.module';
     MedidasModule,
     TaxaContatoModule,
     EquipamentosModule,
-    PontosModule
+    PontosModule,
+    InspecoesModule
   ],
 })
 export class AppModule {}
