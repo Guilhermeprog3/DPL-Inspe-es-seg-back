@@ -1,5 +1,6 @@
 // src/medidas/medidas.controller.ts
-import { Controller, Post, Get, Body, Patch, Param,Delete, UseGuards, Req, ForbiddenException } from '@nestjs/common';
+import { Controller, Post, Get,UploadedFiles, Body, Patch, Param,Delete, UseGuards,UseInterceptors, Req, ForbiddenException } from '@nestjs/common';
+import { FilesInterceptor } from '@nestjs/platform-express';
 import { MedidasService } from './medidas.service';
 import { CreateMedidaDto } from './dto/create-medida.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -10,10 +11,17 @@ export class MedidasController {
   constructor(private readonly medidasService: MedidasService) {}
 
   @Post()
-  async create(@Body() dto: CreateMedidaDto, @Req() req) {
+  @UseInterceptors(FilesInterceptor('files')) // 'files' deve ser o nome do campo no FormData do Frontend
+  async create(
+    @Body() dto: CreateMedidaDto, 
+    @Req() req,
+    @UploadedFiles() files: Express.Multer.File[]
+  ) {
     this.checkCobliRole(req.user);
-    return this.medidasService.create(dto, req.user.userId);
+    // Passamos os arquivos recebidos para o service
+    return this.medidasService.create(dto, req.user.userId, files);
   }
+
   @Get(':id')
   async findOne(@Param('id') id: string, @Req() req) {
     this.checkCobliRole(req.user); // Garante que apenas quem tem permissão acessa
@@ -39,8 +47,10 @@ export class MedidasController {
   }
 
   private checkCobliRole(user: any) {
-    if (user.role !== 'agente_cobli') {
-      throw new ForbiddenException('Apenas Agentes Cobli podem gerenciar medidas');
-    }
+  const rolesPermitidos = ['agente_cobli','admin'];
+  
+  if (!rolesPermitidos.includes(user.role)) {
+    throw new ForbiddenException('Você não tem permissão para gerenciar medidas');
   }
+}
 }

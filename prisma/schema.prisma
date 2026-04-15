@@ -136,6 +136,7 @@ model Medida {
   numeroInspecao String?  @db.NVarChar(Max)
   diasSuspensao  Int?
   nomeSupervisor String   @db.NVarChar(Max)
+  anexos MedidaAnexo[]
 }
 
 
@@ -158,4 +159,16 @@ model TaxaContato {
   filial       String?
 
   @@map("taxa de contato")
+}
+
+model MedidaAnexo {
+  id        String   @id @default(uuid()) @db.NVarChar(450)
+  url       String   @db.NVarChar(Max) // Caminho onde o arquivo ficou no SFTP
+  nome      String   @db.NVarChar(Max) // Nome original do arquivo (ex: foto.jpg)
+  tipo      String   @db.NVarChar(Max) // Extensão/Mimetype (ex: image/jpeg)
+  criadoEm  DateTime @default(now())
+
+  // Relacionamento com a Medida
+  medidaId  String   @db.NVarChar(450)
+  medida    Medida   @relation(fields: [medidaId], references: [id], onDelete: Cascade)
 }
