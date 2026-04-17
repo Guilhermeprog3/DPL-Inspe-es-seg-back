@@ -111,10 +111,37 @@ export class MedidasService {
   }
 
   async findAllByUser(userId: string) {
+  // 1. Buscamos primeiro os dados de UF e Regional do usuário logado
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    select: { uf: true, regional: true, role: true }
+  });
+
+  if (!user) throw new NotFoundException('Usuário não encontrado');
+
+  // 2. Se for 'admin', talvez você queira retornar TUDO. 
+  // Se for 'agente_cobli', filtramos pela regional dele.
+  const filter: any = {};
+
+  if (user.role !== 'admin') {
+    filter.criadoPor = {
+      uf: user.uf,
+      regional: user.regional,
+    };
+  }
+
+  // 3. Buscamos as medidas com base no filtro geográfico
   return this.prisma.medida.findMany({
-    where: { criadoPorId: userId },
+    where: filter,
     include: {
-      anexos: true, // Se o nome da relação no seu schema Prisma for 'anexos'
+      anexos: true,
+      criadoPor: { // Incluímos para saber quem lançou na regional
+        select: {
+          nome: true,
+          uf: true,
+          regional: true
+        }
+      }
     },
     orderBy: {
       data: 'desc',

@@ -18,7 +18,6 @@ export class MedidasController {
     @UploadedFiles() files: Express.Multer.File[]
   ) {
     this.checkCobliRole(req.user);
-    // Passamos os arquivos recebidos para o service
     return this.medidasService.create(dto, req.user.userId, files);
   }
 
