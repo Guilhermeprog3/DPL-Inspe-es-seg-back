@@ -129,24 +129,50 @@ export class UsersService {
 
   async update(id: string, data: any) {
   try {
-    // We update the user and return only the safe fields
+    // 1. Verificar se o usuário existe antes de atualizar
+    const userExists = await this.prisma.user.findUnique({ where: { id } });
+    if (!userExists) throw new NotFoundException('Usuário não encontrado');
+
+    // 2. Preparar os dados para o Prisma
+    // Espalhamos o 'data' para permitir editar nome, email, etc.
+    // E tratamos o campo 'ativo' especificamente para garantir que seja Boolean.
+    const updatePayload: Prisma.UserUpdateInput = {
+      ...data,
+    };
+
+    // Tratamento especial para o status ativo
+    // Se vier 'ativo' do checkbox (boolean) ou se vier um campo 'status' (string)
+    if (data.ativo !== undefined) {
+      updatePayload.ativo = Boolean(data.ativo);
+    } else if (data.status !== undefined) {
+      updatePayload.ativo = data.status === 'ativo';
+    }
+
+    // Removemos o campo 'status' do payload se ele existir, pois não existe no Model do Prisma
+    if ('status' in updatePayload) {
+      delete (updatePayload as any).status;
+    }
+
     const updatedUser = await this.prisma.user.update({
       where: { id },
-      data: {
-        // If your database uses 'ativo' (boolean) but your frontend sends 'status' (string)
-        // you might need to map it here. 
-        // Based on your frontend: status 'ativo' -> ativo: true
-        ativo: data.status === 'ativo',
-        
-        // If you have a specific 'status' field in your DB, use this:
-        // status: data.status, 
+      data: updatePayload,
+      select: {
+        id: true,
+        nome: true,
+        sobrenome: true,
+        email: true,
+        role: true,
+        uf: true,
+        regional: true,
+        ativo: true,
       },
     });
 
     return updatedUser;
   } catch (err) {
+    if (err instanceof NotFoundException) throw err;
     this.logger.error(`Erro ao atualizar usuário ID: ${id}`, err);
-    throw new InternalServerErrorException('Não foi possível atualizar o usuário.');
+    throw new InternalServerErrorException('Não foi possível atualizar o usuário no banco de dados.');
   }
 }
 
