@@ -1,49 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { PrismaPfuncService } from '../prisma/prisma-pfunc.service';
 
 @Injectable()
 export class TaxaContatoService {
-  private supabase: SupabaseClient;
+  constructor(private prismaPfunc: PrismaPfuncService) {}
 
-  constructor() {
-    const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_KEY;
-
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error(
-        'As variáveis de ambiente SUPABASE_URL e SUPABASE_KEY são obrigatórias.',
-      );
-    }
-
-    this.supabase = createClient(supabaseUrl, supabaseKey);
-  }
-
+  // Renomeado para coincidir com o Controller
   async buscarColaboradoresRecentes() {
-    // 1. Busca a data mais recente diretamente no Supabase
-    // Nota: Use o nome exato da tabela que aparece na sua URL: TAXA_DE_CONTATO
-    const { data: maxDateRow, error: dateError } = await this.supabase
-      .from('TAXA_DE_CONTATO')
-      .select('DATA')
-      .order('DATA', { ascending: false })
-      .limit(1)
-      .single();
+    try {
+      // Busca na View dbo.vw_funcionarios pegando apenas chapa e nome
+      const funcionarios = await this.prismaPfunc.vwFuncionario.findMany({
+        select: {
+          chapa: true,
+          nome: true,
+        },
+        orderBy: {
+          nome: 'asc',
+        },
+      });
 
-    if (dateError || !maxDateRow) return [];
-
-    const ultimaData = maxDateRow.DATA;
-
-    // 2. Busca todos os colaboradores daquela data
-    const { data: colaboradores, error: dataError } = await this.supabase
-      .from('TAXA_DE_CONTATO')
-      .select('CHAVE, CHAPA, NOME, CPF, FUNCAO, EQUIPE, SUPERVISOR, DATA, FILIAL')
-      .eq('DATA', ultimaData)
-      .order('NOME', { ascending: true });
-
-    if (dataError) {
-      console.error('Erro Supabase:', dataError);
-      throw new Error('Erro ao consultar os dados no Supabase');
+      return funcionarios;
+    } catch (error) {
+      console.error('Erro ao buscar dados na View vw_funcionarios:', error);
+      throw new Error('Não foi possível carregar a lista de funcionários.');
     }
-
-    return colaboradores;
   }
 }

@@ -1,0 +1,17 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/client-pfunc"
+}
+
+datasource db {
+  provider = "sqlserver"
+  url      = env("DATABASE_URL_PFUNC")
+}
+
+model VwFuncionario {
+  chapa String @id @db.VarChar(20)
+  nome  String? @db.VarChar(255)
+
+  @@map("vw_funcionarios")
+  // Removido o @@schema("dbo")
+}
