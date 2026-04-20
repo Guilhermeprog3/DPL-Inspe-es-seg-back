@@ -19,7 +19,6 @@ model User {
   uf        String     @db.NVarChar(Max)
   regional  String     @db.NVarChar(Max)
   role      String     @db.NVarChar(Max)
-  ativo     Boolean    @default(true, map: "DF__User__ativo__5EBF139D")
   criadoEm  DateTime   @default(now(), map: "DF__User__criadoEm__5FB337D6")
   inspecoes Inspecao[]
   ativo     Boolean  @default(false)

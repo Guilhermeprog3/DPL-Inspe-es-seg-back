@@ -4,10 +4,12 @@ import {
   Post,
   Body,
   Get,
+  Patch,
   Query,
   NotFoundException,
   HttpCode,
   HttpStatus,
+  Param,
   BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -22,6 +24,10 @@ export class UsersController {
   async create(@Body() createUserDto: CreateUserDto) {
     return this.usersService.create(createUserDto);
   }
+  @Patch(':id')
+async update(@Param('id') id: string, @Body() updateData: any) {
+  return this.usersService.update(id, updateData);
+}
 
   @Get()
   async findAll() {
@@ -39,4 +45,9 @@ export class UsersController {
 
     return { uf: user.uf, regional: user.regional };
   }
+  @Get(':id')
+async findOne(@Param('id') id: string) {
+  return this.usersService.findOne(id);
+}
+
 }

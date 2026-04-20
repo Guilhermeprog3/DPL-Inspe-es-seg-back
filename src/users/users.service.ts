@@ -5,6 +5,7 @@ import {
   ConflictException,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
@@ -21,6 +22,24 @@ export class UsersService {
   };
 
   constructor(private prisma: PrismaService) {}
+
+  async findOne(id: string) {
+  try {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+    });
+    
+    if (!user) {
+      throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
+    }
+    
+    return user;
+  } catch (err) {
+    if (err instanceof NotFoundException) throw err;
+    this.logger.error(`Erro ao buscar usuário ID: ${id}`, err);
+    throw new InternalServerErrorException('Erro ao buscar usuário.');
+  }
+}
 
   async create(createUserDto: CreateUserDto) {
     const { nome, sobrenome, email, password, uf, regional, role } = createUserDto;
@@ -78,7 +97,7 @@ export class UsersService {
           uf:        true,
           regional:  true,
           ativo:     true,
-          createdAt: true,
+          criadoEm: true,
         },
       });
 
@@ -108,6 +127,29 @@ export class UsersService {
     }
   }
 
+  async update(id: string, data: any) {
+  try {
+    // We update the user and return only the safe fields
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        // If your database uses 'ativo' (boolean) but your frontend sends 'status' (string)
+        // you might need to map it here. 
+        // Based on your frontend: status 'ativo' -> ativo: true
+        ativo: data.status === 'ativo',
+        
+        // If you have a specific 'status' field in your DB, use this:
+        // status: data.status, 
+      },
+    });
+
+    return updatedUser;
+  } catch (err) {
+    this.logger.error(`Erro ao atualizar usuário ID: ${id}`, err);
+    throw new InternalServerErrorException('Não foi possível atualizar o usuário.');
+  }
+}
+
   async findAll() {
     try {
       return await this.prisma.user.findMany({
@@ -120,9 +162,9 @@ export class UsersService {
           uf:        true,
           regional:  true,
           ativo:     true,
-          createdAt: true,
+          criadoEm: true,
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { criadoEm: 'desc' },
       });
     } catch (err) {
       this.logger.error('Erro ao buscar usuários', err);
