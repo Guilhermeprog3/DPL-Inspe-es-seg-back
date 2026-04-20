@@ -8,75 +8,81 @@ export class MedidasService {
   constructor(private prisma: PrismaService) {}
 
   async create(dto: any, userId: string, files: Express.Multer.File[]) {
-  // 1. Cria a Medida no Banco
-  const medida = await this.prisma.medida.create({
-    data: {
-      ...dto,
-      criadoPorId: userId,
-    },
-  });
+    const { files: _, ...dataForPrisma } = dto;
 
-  // 2. Processamento de Arquivos SFTP
-  if (files && files.length > 0) {
+    const medida = await this.prisma.medida.create({
+      data: {
+        ...dataForPrisma,
+        diasSuspensao: dto.diasSuspensao ? parseInt(dto.diasSuspensao) : null,
+        criadoPorId: userId,
+      },
+    });
+
+    if (files && files.length > 0) {
+      await this.processFiles(files, medida.id);
+    }
+
+    return medida;
+  }
+
+  // MÉTODO UPDATE CORRIGIDO
+  async update(id: string, dto: any, userId: string, files: Express.Multer.File[]) {
+    // 1. Verifica se a medida existe
+    const medidaExistente = await this.prisma.medida.findUnique({ where: { id } });
+
+    if (!medidaExistente) throw new NotFoundException('Medida não encontrada');
+    
+    // 2. Segurança
+    if (medidaExistente.criadoPorId !== userId) {
+      throw new ForbiddenException('Você só pode editar suas próprias medidas');
+    }
+
+    // 3. Limpeza do DTO
+    const { files: _, anexos, ...dataForPrisma } = dto;
+
+    // 4. Atualiza os dados de texto
+    const medidaAtualizada = await this.prisma.medida.update({
+      where: { id },
+      data: {
+        ...dataForPrisma,
+        diasSuspensao: dto.diasSuspensao !== undefined 
+          ? (dto.diasSuspensao ? parseInt(dto.diasSuspensao) : null) 
+          : undefined,
+      },
+    });
+
+    // 5. Processa novos arquivos se houver
+    if (files && files.length > 0) {
+      await this.processFiles(files, id);
+    }
+
+    return medidaAtualizada;
+  }
+
+  // MÉTODO AUXILIAR PARA EVITAR REPETIÇÃO DE CÓDIGO
+  private async processFiles(files: Express.Multer.File[], medidaId: string) {
     for (const file of files) {
-      // Gerar nome único e limpar espaços/caracteres especiais
       const safeName = file.originalname.replace(/\s+/g, '_');
       const uniqueName = `${Date.now()}-${safeName}`;
-      
-      // CAMINHO CORRIGIDO: Aponta diretamente para a pasta /uploads
       const remotePath = `/uploads/medidas/${uniqueName}`;
 
       try {
         await this.uploadToSFTP(file, remotePath);
 
-        // Salva a referência do anexo no banco vinculado à medida
         await this.prisma.medidaAnexo.create({
           data: {
             nome: file.originalname,
-            url: remotePath, // Caminho para consulta futura
+            url: remotePath,
             tipo: file.mimetype,
-            medidaId: medida.id,
+            medidaId: medidaId,
           },
         });
       } catch (error) {
         console.error(`Falha no upload SFTP (${file.originalname}):`, error);
-        // Opcional: Você pode lançar um erro aqui se o anexo for obrigatório
       }
     }
   }
 
-  return medida;
-}
-
-async findAllByRegional(userId: string, role: string, userUf: string, userRegional: string) {
-  const filter: any = {};
-
-  // Se não for admin, aplica a restrição geográfica
-  if (role.toLowerCase() !== 'admin') {
-    filter.criadoPor = {
-      uf: userUf,
-      regional: userRegional,
-    };
-  }
-
-  return this.prisma.medida.findMany({
-    where: filter,
-    include: {
-      anexos: true,
-      criadoPor: {
-        select: {
-          nome: true,
-          uf: true,
-          regional: true,
-        },
-      },
-    },
-    orderBy: {
-      data: 'desc',
-    },
-  });
-}
-  // Seu método uploadToSFTP corrigido
   async uploadToSFTP(file: Express.Multer.File, remotePath: string): Promise<void> {
     const conn = new Client();
     return new Promise((resolve, reject) => {
@@ -86,19 +92,15 @@ async findAllByRegional(userId: string, role: string, userUf: string, userRegion
             conn.end();
             return reject(err);
           }
-          
           const writeStream = sftp.createWriteStream(remotePath);
-          
           writeStream.on('close', () => {
             conn.end();
             resolve();
           });
-
           writeStream.on('error', (streamErr) => {
             conn.end();
             reject(streamErr);
           });
-
           writeStream.end(file.buffer);
         });
       })
@@ -112,89 +114,87 @@ async findAllByRegional(userId: string, role: string, userUf: string, userRegion
     });
   }
 
-  async update(id: string, dto: any, userId: string) {
-    const medida = await this.prisma.medida.findUnique({ where: { id } });
-
-    if (!medida) throw new NotFoundException('Medida não encontrada');
-    if (medida.criadoPorId !== userId) {
-      throw new ForbiddenException('Você só pode editar suas próprias medidas');
+  // ... (findAllByRegional, findOne, findAllByUser, remove permanecem iguais)
+  async findAllByRegional(userId: string, role: string, userUf: string, userRegional: string) {
+    const filter: any = {};
+    if (role.toLowerCase() !== 'admin') {
+      filter.criadoPor = { uf: userUf, regional: userRegional };
     }
-
-    return this.prisma.medida.update({
-      where: { id },
-      data: dto,
+    return this.prisma.medida.findMany({
+      where: filter,
+      include: { anexos: true, criadoPor: { select: { nome: true, uf: true, regional: true } } },
+      orderBy: { data: 'desc' },
     });
   }
 
   async findOne(id: string) {
-    const medida = await this.prisma.medida.findUnique({
-      where: { id },
-    });
-
-    if (!medida) {
-      throw new NotFoundException(`Medida com ID ${id} não encontrada`);
-    }
-
+    const medida = await this.prisma.medida.findUnique({ where: { id }, include: { anexos: true } });
+    if (!medida) throw new NotFoundException(`Medida com ID ${id} não encontrada`);
     return medida;
   }
 
   async findAllByUser(userId: string) {
-  // 1. Buscamos primeiro os dados de UF e Regional do usuário logado
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-    select: { uf: true, regional: true, role: true }
-  });
-
-  if (!user) throw new NotFoundException('Usuário não encontrado');
-
-  // 2. Se for 'admin', talvez você queira retornar TUDO. 
-  // Se for 'agente_cobli', filtramos pela regional dele.
-  const filter: any = {};
-
-  if (user.role !== 'admin') {
-    filter.criadoPor = {
-      uf: user.uf,
-      regional: user.regional,
-    };
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { uf: true, regional: true, role: true } });
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    const filter: any = {};
+    if (user.role !== 'admin') {
+      filter.criadoPor = { uf: user.uf, regional: user.regional };
+    }
+    return this.prisma.medida.findMany({
+      where: filter,
+      include: { anexos: true, criadoPor: { select: { nome: true, uf: true, regional: true } } },
+      orderBy: { data: 'desc' },
+    });
   }
-
-  // 3. Buscamos as medidas com base no filtro geográfico
-  return this.prisma.medida.findMany({
-    where: filter,
-    include: {
-      anexos: true,
-      criadoPor: { // Incluímos para saber quem lançou na regional
-        select: {
-          nome: true,
-          uf: true,
-          regional: true
-        }
-      }
-    },
-    orderBy: {
-      data: 'desc',
-    },
-  });
-}
 
   async remove(id: string, userId: string) {
-    // 1. Verifica se a medida existe
-    const medida = await this.prisma.medida.findUnique({
-      where: { id },
-    });
-
-    if (!medida) {
-      throw new NotFoundException('Medida não encontrada');
-    }
-
-    // 2. Segurança: Verifica se o registro pertence ao usuário logado
-    if (medida.criadoPorId !== userId) {
-      throw new ForbiddenException('Você não tem permissão para excluir esta medida');
-    }
-
-    // 3. Deleta de fato
-    return this.prisma.medida.delete({
-      where: { id },
-    });
+    const medida = await this.prisma.medida.findUnique({ where: { id } });
+    if (!medida) throw new NotFoundException('Medida não encontrada');
+    if (medida.criadoPorId !== userId) throw new ForbiddenException('Você não tem permissão');
+    return this.prisma.medida.delete({ where: { id } });
   }
+
+  // Adicione no MedidasService
+async findAnexoById(id: string) {
+  const anexo = await this.prisma.medidaAnexo.findUnique({
+    where: { id },
+  });
+  if (!anexo) throw new NotFoundException('Anexo não encontrado no banco');
+  return anexo;
+}
+
+async downloadFromSFTP(remotePath: string): Promise<Buffer> {
+  const conn = new Client();
+  return new Promise((resolve, reject) => {
+    conn.on('ready', () => {
+      conn.sftp((err, sftp) => {
+        if (err) {
+          conn.end();
+          return reject(err);
+        }
+
+        // Criar um stream de leitura do servidor remoto
+        const readStream = sftp.createReadStream(remotePath);
+        const chunks: Buffer[] = [];
+
+        readStream.on('data', (chunk) => chunks.push(Buffer.from(chunk)));
+        readStream.on('error', (streamErr) => {
+          conn.end();
+          reject(streamErr);
+        });
+        readStream.on('end', () => {
+          conn.end();
+          resolve(Buffer.concat(chunks));
+        });
+      });
+    })
+    .on('error', (err) => reject(err))
+    .connect({
+      host: '10.10.211.6',
+      port: 22,
+      username: 'user_SIG',
+      password: 'kQhfzJBN@¨#*$$189234{712*' 
+    });
+  });
+}
 }
