@@ -48,6 +48,34 @@ export class MedidasService {
   return medida;
 }
 
+async findAllByRegional(userId: string, role: string, userUf: string, userRegional: string) {
+  const filter: any = {};
+
+  // Se não for admin, aplica a restrição geográfica
+  if (role.toLowerCase() !== 'admin') {
+    filter.criadoPor = {
+      uf: userUf,
+      regional: userRegional,
+    };
+  }
+
+  return this.prisma.medida.findMany({
+    where: filter,
+    include: {
+      anexos: true,
+      criadoPor: {
+        select: {
+          nome: true,
+          uf: true,
+          regional: true,
+        },
+      },
+    },
+    orderBy: {
+      data: 'desc',
+    },
+  });
+}
   // Seu método uploadToSFTP corrigido
   async uploadToSFTP(file: Express.Multer.File, remotePath: string): Promise<void> {
     const conn = new Client();

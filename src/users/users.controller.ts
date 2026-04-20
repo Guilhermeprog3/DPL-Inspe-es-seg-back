@@ -1,6 +1,15 @@
 // src/users/users.controller.ts
-
-import { Controller, Post, Body, Get, UseGuards,Query,NotFoundException, } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  NotFoundException,
+  HttpCode,
+  HttpStatus,
+  BadRequestException,
+} from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 
@@ -9,22 +18,25 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Post()
+  @HttpCode(HttpStatus.CREATED)
   async create(@Body() createUserDto: CreateUserDto) {
-    // A lógica de validação de Regional por UF já deve estar no Service
     return this.usersService.create(createUserDto);
   }
 
   @Get()
-  // Aqui você poderá adicionar um Guard de Admin futuramente
   async findAll() {
     return this.usersService.findAll();
   }
 
   @Get('by-email')
-async findByEmail(@Query('email') email: string) {
-  const user = await this.usersService.findByEmail(email);
-  if (!user) throw new NotFoundException('Usuário não encontrado');
-  return { uf: user.uf, regional: user.regional };
-}
+  async findByEmail(@Query('email') email: string) {
+    if (!email?.trim()) {
+      throw new BadRequestException('O parâmetro "email" é obrigatório.');
+    }
 
+    const user = await this.usersService.findByEmail(email);
+    if (!user) throw new NotFoundException('Usuário não encontrado.');
+
+    return { uf: user.uf, regional: user.regional };
+  }
 }

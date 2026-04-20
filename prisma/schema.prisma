@@ -22,6 +22,7 @@ model User {
   ativo     Boolean    @default(true, map: "DF__User__ativo__5EBF139D")
   criadoEm  DateTime   @default(now(), map: "DF__User__criadoEm__5FB337D6")
   inspecoes Inspecao[]
+  ativo     Boolean  @default(false)
   medidas   Medida[]   @relation("MedidasCriadas")
 }
 
@@ -130,6 +131,7 @@ model Medida {
   medida        String   @db.NVarChar(Max)
   gravidade     String   @db.NVarChar(Max)
   classificacao String   @db.NVarChar(Max)
+  origem        String?  @db.NVarChar(Max)
   status        String   @default("EM ANDAMENTO", map: "DF__Medida__status__6E01572D") @db.NVarChar(Max)
   criadoPorId   String   @db.NVarChar(450)
   criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id], onDelete: Cascade)

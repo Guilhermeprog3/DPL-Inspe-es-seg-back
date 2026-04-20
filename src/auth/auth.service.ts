@@ -18,6 +18,11 @@ export class AuthService {
   const isMatch = await bcrypt.compare(pass, user.password);
   if (!isMatch) throw new UnauthorizedException('Senha incorreta');
 
+  // ─── NOVA TRAVA DE SEGURANÇA ───
+  if (!user.ativo) {
+    throw new UnauthorizedException('Sua conta está inativa. Aguarde a aprovação de um administrador.');
+  }
+
   if (user.uf !== loginUf || user.regional !== loginRegional) {
     throw new UnauthorizedException('Você não tem permissão para acessar esta Regional/UF');
   }
@@ -32,7 +37,7 @@ export class AuthService {
 
   return {
     access_token: this.jwtService.sign(payload),
-    user: { // ADICIONE OS CAMPOS FALTANTES AQUI
+    user: {
       id: user.id,
       nome: user.nome,
       email: user.email,

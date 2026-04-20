@@ -32,6 +32,13 @@ export class CreateMedidaDto {
   @IsString() @IsNotEmpty()
   ocorrencia: string;
 
+  @IsString()
+  @IsNotEmpty({ message: 'A origem é obrigatória' })
+  @IsIn(['ESS', 'CLICK', 'NMC', 'MULTA DE TRÂNSITO', 'GESTÃO DE GENTE'], {
+    message: 'Origem inválida',
+  })
+  origem: string; // <-- ADICIONE ESTA PROPRIEDADE
+
   @IsOptional() 
   @IsInt({ message: 'Os dias de suspensão devem ser um número inteiro' })
   @Min(1, { message: 'A suspensão deve ser de no mínimo 1 dia' })

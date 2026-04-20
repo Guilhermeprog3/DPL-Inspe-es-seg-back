@@ -1,67 +1,143 @@
 // src/users/users.service.ts
-import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ConflictException,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import * as bcrypt from 'bcrypt';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class UsersService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(UsersService.name);
 
-  private readonly regionaisPermitidas = {
+  private readonly regionaisPermitidas: Record<string, string[]> = {
     PI: ['NORTE', 'SUL', 'METROPOLITANA'],
-    MA: ['NORTE', 'SUL', 'NORDESTE', 'SUDESTE']
+    MA: ['NORTE', 'SUL', 'NORDESTE', 'SUDESTE'],
   };
 
-  async create(dto: CreateUserDto) {
-    const validas = this.regionaisPermitidas[dto.uf];
-    if (!validas || !validas.includes(dto.regional.toUpperCase())) {
+  constructor(private prisma: PrismaService) {}
+
+  async create(createUserDto: CreateUserDto) {
+    const { nome, sobrenome, email, password, uf, regional, role } = createUserDto;
+
+    // Valida UF
+    const ufUpper = uf?.toUpperCase();
+    if (!this.regionaisPermitidas[ufUpper]) {
+      throw new BadRequestException(`UF inválida: "${uf}". Permitidas: ${Object.keys(this.regionaisPermitidas).join(', ')}.`);
+    }
+
+    // Valida Regional para a UF
+    const regionalUpper = regional?.toUpperCase();
+    const regionaisValidas = this.regionaisPermitidas[ufUpper];
+    if (!regionaisValidas.includes(regionalUpper)) {
       throw new BadRequestException(
-        `Regional ${dto.regional} inválida para ${dto.uf}. Opções: ${validas?.join(', ')}`
+        `Regional "${regional}" inválida para ${ufUpper}. Válidas: ${regionaisValidas.join(', ')}.`,
       );
     }
 
-    const salt = await bcrypt.genSalt();
-    const hashedPassword = await bcrypt.hash(dto.password, salt);
+    // Verifica e-mail duplicado explicitamente antes de tentar inserir
+    // (evita depender somente do erro do banco)
+    const existente = await this.prisma.user.findUnique({ where: { email } });
+    if (existente) {
+      throw new ConflictException('Este e-mail já está cadastrado. Tente outro ou faça login.');
+    }
 
-    return this.prisma.user.create({
-      data: {
-        ...dto,
-        regional: dto.regional.toUpperCase(),
-        password: hashedPassword,
-      },
-      select: { // Remove a senha do retorno por segurança
-        id: true,
-        nome: true,
-        email: true,
-        role: true,
-        uf: true,
-        regional: true,
-        ativo: true,
+    // Hash da senha
+    let hashedPassword: string;
+    try {
+      hashedPassword = await bcrypt.hash(password, 12);
+    } catch (err) {
+      this.logger.error('Erro ao gerar hash da senha', err);
+      throw new InternalServerErrorException('Erro interno ao processar a senha.');
+    }
+
+    // Criação no banco
+    try {
+      const user = await this.prisma.user.create({
+        data: {
+          nome:     nome.trim(),
+          sobrenome: sobrenome.trim(),
+          email:    email.toLowerCase().trim(),
+          password: hashedPassword,
+          uf:       ufUpper,
+          regional: regionalUpper,
+          role,
+          ativo:    false, // pendente de aprovação
+        },
+        select: {
+          id:        true,
+          nome:      true,
+          sobrenome: true,
+          email:     true,
+          role:      true,
+          uf:        true,
+          regional:  true,
+          ativo:     true,
+          createdAt: true,
+        },
+      });
+
+      return {
+        message: 'Solicitação de acesso registrada com sucesso. Aguarde aprovação de um administrador.',
+        user,
+      };
+    } catch (err) {
+      // Unique constraint do Prisma (P2002) — fallback caso a verificação acima tenha race condition
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('Este e-mail já está cadastrado. Tente outro ou faça login.');
       }
-    });
+
+      // Erro de conexão / timeout com o banco
+      if (err instanceof Prisma.PrismaClientInitializationError) {
+        this.logger.error('Falha de conexão com o banco de dados', err);
+        throw new InternalServerErrorException('Não foi possível conectar ao banco de dados. Tente novamente em instantes.');
+      }
+
+      if (err instanceof Prisma.PrismaClientRustPanicError) {
+        this.logger.error('Erro crítico no Prisma Client', err);
+        throw new InternalServerErrorException('Erro interno crítico. Contate o suporte.');
+      }
+
+      this.logger.error('Erro inesperado ao criar usuário', err);
+      throw new InternalServerErrorException('Erro inesperado ao registrar o usuário. Tente novamente.');
+    }
   }
 
-  // MÉTODO FALTANTE: Busca todos os usuários
   async findAll() {
-    return this.prisma.user.findMany({
-      select: {
-        id: true,
-        nome: true,
-        sobrenome: true,
-        email: true,
-        role: true,
-        uf: true,
-        regional: true,
-        ativo: true,
-      },
-    });
+    try {
+      return await this.prisma.user.findMany({
+        select: {
+          id:        true,
+          nome:      true,
+          sobrenome: true,
+          email:     true,
+          role:      true,
+          uf:        true,
+          regional:  true,
+          ativo:     true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+    } catch (err) {
+      this.logger.error('Erro ao buscar usuários', err);
+      throw new InternalServerErrorException('Erro ao buscar usuários.');
+    }
   }
 
-  // MÉTODO AUXILIAR: Busca por email para o login
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({
-      where: { email },
-    });
+    try {
+      return await this.prisma.user.findUnique({
+        where: { email: email.toLowerCase().trim() },
+      });
+    } catch (err) {
+      this.logger.error(`Erro ao buscar usuário por e-mail: ${email}`, err);
+      throw new InternalServerErrorException('Erro ao buscar usuário.');
+    }
   }
 }

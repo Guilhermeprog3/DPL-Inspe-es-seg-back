@@ -11,13 +11,19 @@ export class MedidasController {
   constructor(private readonly medidasService: MedidasService) {}
 
   @Post()
-  @UseInterceptors(FilesInterceptor('files')) // 'files' deve ser o nome do campo no FormData do Frontend
+  @UseInterceptors(FilesInterceptor('files'))
   async create(
     @Body() dto: CreateMedidaDto, 
     @Req() req,
     @UploadedFiles() files: Express.Multer.File[]
   ) {
     this.checkCobliRole(req.user);
+
+    // Converte diasSuspensao para número se ele existir (FormData envia tudo como string)
+    if (dto.diasSuspensao) {
+      dto.diasSuspensao = Number(dto.diasSuspensao);
+    }
+
     return this.medidasService.create(dto, req.user.userId, files);
   }
 
@@ -28,10 +34,16 @@ export class MedidasController {
   }
 
   @Get()
-  async findAll(@Req() req) {
-    this.checkCobliRole(req.user);
-    return this.medidasService.findAllByUser(req.user.userId);
-  }
+async findAll(@Req() req) {
+  this.checkCobliRole(req.user);
+  
+  return this.medidasService.findAllByRegional(
+    req.user.userId, 
+    req.user.role, 
+    req.user.uf, 
+    req.user.regional
+  );
+}
 
   @Patch(':id')
   async update(@Param('id') id: string, @Body() dto: any, @Req() req) {
