@@ -18,7 +18,7 @@ export class UsersService {
 
   private readonly regionaisPermitidas: Record<string, string[]> = {
     PI: ['NORTE', 'SUL', 'METROPOLITANA'],
-    MA: ['NORTE', 'SUL', 'NORDESTE', 'SUDESTE'],
+    MA: ['NORTE', 'SUL', 'NORDESTE', 'LESTE'],
   };
 
   constructor(private prisma: PrismaService) {}
@@ -197,6 +197,28 @@ export class UsersService {
       throw new InternalServerErrorException('Erro ao buscar usuários.');
     }
   }
+
+  async remove(id: string) {
+  try {
+    // 1. Verificar se o usuário existe antes de deletar
+    const user = await this.prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);
+    }
+
+    // 2. Deletar do banco
+    await this.prisma.user.delete({
+      where: { id },
+    });
+
+    return { message: 'Usuário removido com sucesso' };
+  } catch (err) {
+    if (err instanceof NotFoundException) throw err;
+    
+    this.logger.error(`Erro ao remover usuário ID: ${id}`, err);
+    throw new InternalServerErrorException('Erro ao excluir o usuário.');
+  }
+}
 
   async findByEmail(email: string) {
     try {

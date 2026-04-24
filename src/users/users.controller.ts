@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Param,
+  Delete,
   BadRequestException,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
@@ -50,4 +51,8 @@ async findOne(@Param('id') id: string) {
   return this.usersService.findOne(id);
 }
 
+@Delete(':id') // Esta é a rota que está faltando!
+  async remove(@Param('id') id: string) {
+    return this.usersService.remove(id);
+  }
 }

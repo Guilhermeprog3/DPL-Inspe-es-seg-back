@@ -9,7 +9,14 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   console.log('>>> Iniciando NestJS...');
   const app = await NestFactory.create(AppModule);
-  app.enableCors();
+  app.enableCors({
+    origin: [
+      'https://dpl-sig.vercel.app', // Sua URL da Vercel
+      'http://localhost:3000'        // Para você continuar testando localmente
+    ],
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
   await app.listen(3001);
   console.log('🚀 Servidor rodando na porta 3001');
 }

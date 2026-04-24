@@ -1,87 +1,70 @@
 // src/medidas/medidas.controller.ts
-import { Controller, Res, Post, Get, UploadedFiles, Body, Patch, Param, Delete, UseGuards, UseInterceptors, Req, ForbiddenException } from '@nestjs/common';
+import {
+  Controller, Get, Post, Patch, Delete, Param,
+  Body, Req, UseInterceptors, UploadedFiles,
+  Query, BadRequestException,
+} from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { MedidasService } from './medidas.service';
-import { CreateMedidaDto } from './dto/create-medida.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('medidas')
-@UseGuards(JwtAuthGuard)
 export class MedidasController {
   constructor(private readonly medidasService: MedidasService) {}
 
-  @Post()
-  @UseInterceptors(FilesInterceptor('files'))
-  async create(
-    @Body() dto: CreateMedidaDto, 
-    @Req() req,
-    @UploadedFiles() files: Express.Multer.File[]
+  // ── GET /medidas ─────────────────────────────────────────────────────────────
+  // Query params obrigatórios: userId, role, uf, regional
+  // Query params opcionais:    ufs=PI,MA  regionais=NORTE,SUL
+  @Get()
+  findAll(
+    @Query('userId')    userId: string,
+    @Query('role')      role: string,
+    @Query('uf')        userUf: string,
+    @Query('regional')  userRegional: string,
+    @Query('ufs')       ufsParam?: string,
+    @Query('regionais') regionaisParam?: string,
   ) {
-    this.checkCobliRole(req.user);
+    if (!userId) throw new BadRequestException('userId é obrigatório');
 
-    // Converte diasSuspensao para número se ele existir
-    if (dto.diasSuspensao) {
-      dto.diasSuspensao = Number(dto.diasSuspensao);
-    }
+    const ufs       = ufsParam       ? ufsParam.split(',').map(s => s.trim()).filter(Boolean)       : [];
+    const regionais = regionaisParam ? regionaisParam.split(',').map(s => s.trim()).filter(Boolean) : [];
 
-    return this.medidasService.create(dto, req.user.userId, files);
+    return this.medidasService.findAll(userId, role ?? '', userUf ?? '', userRegional ?? '', ufs, regionais);
   }
 
+  // ── GET /medidas/:id ─────────────────────────────────────────────────────────
   @Get(':id')
-  async findOne(@Param('id') id: string, @Req() req) {
-    this.checkCobliRole(req.user);
+  findOne(@Param('id') id: string) {
     return this.medidasService.findOne(id);
   }
 
-  @Get()
-  async findAll(@Req() req) {
-    this.checkCobliRole(req.user);
-    return this.medidasService.findAllByRegional(
-      req.user.userId, 
-      req.user.role, 
-      req.user.uf, 
-      req.user.regional
-    );
-  }
-
-  // MÉTODO UPDATE ATUALIZADO PARA SUPORTAR ARQUIVOS
-  @Patch(':id')
-  @UseInterceptors(FilesInterceptor('files')) // <-- Adicionado Interceptor
-  async update(
-    @Param('id') id: string, 
-    @Body() dto: any, 
-    @Req() req,
-    @UploadedFiles() files: Express.Multer.File[] // <-- Adicionado Captura de arquivos
+  // ── POST /medidas ────────────────────────────────────────────────────────────
+  // Body deve conter userId — uf e regional são injetados pelo service via banco
+  @Post()
+  @UseInterceptors(FilesInterceptor('files', 10))
+  create(
+    @Body() dto: any,
+    @UploadedFiles() files: Express.Multer.File[],
   ) {
-    this.checkCobliRole(req.user);
-
-    // Repetir a conversão caso venha pelo FormData no Update
-    if (dto.diasSuspensao) {
-      dto.diasSuspensao = Number(dto.diasSuspensao);
-    }
-
-    // Passar o array de files para o service processar o SFTP
-    return this.medidasService.update(id, dto, req.user.userId, files);
+    if (!dto.userId) throw new BadRequestException('userId é obrigatório');
+    return this.medidasService.create(dto, dto.userId, files ?? []);
   }
 
-  @Get('anexo/:id')
-async getAnexo(@Param('id') id: string, @Res() res: Response) {
-  const anexo = await this.medidasService.findAnexoById(id);
-  // Aqui você deve buscar o arquivo no SFTP e dar um pipe para o 'res'
-  // Ou, se o arquivo estiver em uma pasta acessível pelo NestJS:
-  // res.sendFile(anexo.url); 
-}
+  // ── PATCH /medidas/:id ───────────────────────────────────────────────────────
+  @Patch(':id')
+  @UseInterceptors(FilesInterceptor('files', 10))
+  update(
+    @Param('id') id: string,
+    @Body() dto: any,
+    @UploadedFiles() files: Express.Multer.File[],
+  ) {
+    if (!dto.userId) throw new BadRequestException('userId é obrigatório');
+    return this.medidasService.update(id, dto, dto.userId, files ?? []);
+  }
 
+  // ── DELETE /medidas/:id ──────────────────────────────────────────────────────
   @Delete(':id')
-  async remove(@Param('id') id: string, @Req() req) {
-    this.checkCobliRole(req.user);
-    return this.medidasService.remove(id, req.user.userId);
-  }
-
-  private checkCobliRole(user: any) {
-    const rolesPermitidos = ['agente_cobli', 'admin'];
-    if (!rolesPermitidos.includes(user.role)) {
-      throw new ForbiddenException('Você não tem permissão para gerenciar medidas');
-    }
+  remove(@Param('id') id: string, @Query('userId') userId: string) {
+    if (!userId) throw new BadRequestException('userId é obrigatório');
+    return this.medidasService.remove(id, userId);
   }
 }

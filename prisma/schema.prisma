@@ -135,9 +135,12 @@ model Medida {
   criadoPorId   String   @db.NVarChar(450)
   criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id], onDelete: Cascade)
   numeroInspecao String?  @db.NVarChar(Max)
+  numerosInspecao String?  @db.NVarChar(Max)  // JSON array: ["INS-001","INS-002"]
   diasSuspensao  Int?
   nomeSupervisor String   @db.NVarChar(Max)
   anexos MedidaAnexo[]
+  uf             String?  @db.NVarChar(Max)
+  regional       String?  @db.NVarChar(Max)
 }
 
 
