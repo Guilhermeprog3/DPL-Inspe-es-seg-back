@@ -1,4 +1,3 @@
-// src/users/users.service.ts
 import {
   Injectable,
   BadRequestException,
@@ -44,13 +43,11 @@ export class UsersService {
   async create(createUserDto: CreateUserDto) {
     const { nome, sobrenome, email, password, uf, regional, role } = createUserDto;
 
-    // Valida UF
     const ufUpper = uf?.toUpperCase();
     if (!this.regionaisPermitidas[ufUpper]) {
       throw new BadRequestException(`UF inválida: "${uf}". Permitidas: ${Object.keys(this.regionaisPermitidas).join(', ')}.`);
     }
 
-    // Valida Regional para a UF
     const regionalUpper = regional?.toUpperCase();
     const regionaisValidas = this.regionaisPermitidas[ufUpper];
     if (!regionaisValidas.includes(regionalUpper)) {
@@ -59,8 +56,6 @@ export class UsersService {
       );
     }
 
-    // Verifica e-mail duplicado explicitamente antes de tentar inserir
-    // (evita depender somente do erro do banco)
     const existente = await this.prisma.user.findUnique({ where: { email } });
     if (existente) {
       throw new ConflictException('Este e-mail já está cadastrado. Tente outro ou faça login.');
@@ -75,7 +70,6 @@ export class UsersService {
       throw new InternalServerErrorException('Erro interno ao processar a senha.');
     }
 
-    // Criação no banco
     try {
       const user = await this.prisma.user.create({
         data: {
@@ -86,7 +80,7 @@ export class UsersService {
           uf:       ufUpper,
           regional: regionalUpper,
           role,
-          ativo:    false, // pendente de aprovação
+          ativo:    false,
         },
         select: {
           id:        true,
@@ -106,12 +100,10 @@ export class UsersService {
         user,
       };
     } catch (err) {
-      // Unique constraint do Prisma (P2002) — fallback caso a verificação acima tenha race condition
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
         throw new ConflictException('Este e-mail já está cadastrado. Tente outro ou faça login.');
       }
 
-      // Erro de conexão / timeout com o banco
       if (err instanceof Prisma.PrismaClientInitializationError) {
         this.logger.error('Falha de conexão com o banco de dados', err);
         throw new InternalServerErrorException('Não foi possível conectar ao banco de dados. Tente novamente em instantes.');
@@ -129,26 +121,19 @@ export class UsersService {
 
   async update(id: string, data: any) {
   try {
-    // 1. Verificar se o usuário existe antes de atualizar
     const userExists = await this.prisma.user.findUnique({ where: { id } });
     if (!userExists) throw new NotFoundException('Usuário não encontrado');
 
-    // 2. Preparar os dados para o Prisma
-    // Espalhamos o 'data' para permitir editar nome, email, etc.
-    // E tratamos o campo 'ativo' especificamente para garantir que seja Boolean.
     const updatePayload: Prisma.UserUpdateInput = {
       ...data,
     };
 
-    // Tratamento especial para o status ativo
-    // Se vier 'ativo' do checkbox (boolean) ou se vier um campo 'status' (string)
     if (data.ativo !== undefined) {
       updatePayload.ativo = Boolean(data.ativo);
     } else if (data.status !== undefined) {
       updatePayload.ativo = data.status === 'ativo';
     }
 
-    // Removemos o campo 'status' do payload se ele existir, pois não existe no Model do Prisma
     if ('status' in updatePayload) {
       delete (updatePayload as any).status;
     }
@@ -200,7 +185,6 @@ export class UsersService {
 
   async remove(id: string) {
   try {
-    // 1. Verificar se o usuário existe antes de deletar
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) {
       throw new NotFoundException(`Usuário com ID ${id} não encontrado.`);

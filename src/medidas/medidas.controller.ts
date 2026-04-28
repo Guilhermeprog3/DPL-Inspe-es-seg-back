@@ -11,9 +11,6 @@ import { MedidasService } from './medidas.service';
 export class MedidasController {
   constructor(private readonly medidasService: MedidasService) {}
 
-  // ── GET /medidas ─────────────────────────────────────────────────────────────
-  // Query params obrigatórios: userId, role, uf, regional
-  // Query params opcionais:    ufs=PI,MA  regionais=NORTE,SUL
   @Get()
   findAll(
     @Query('userId')    userId: string,
@@ -31,14 +28,11 @@ export class MedidasController {
     return this.medidasService.findAll(userId, role ?? '', userUf ?? '', userRegional ?? '', ufs, regionais);
   }
 
-  // ── GET /medidas/:id ─────────────────────────────────────────────────────────
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.medidasService.findOne(id);
   }
 
-  // ── POST /medidas ────────────────────────────────────────────────────────────
-  // Body deve conter userId — uf e regional são injetados pelo service via banco
   @Post()
   @UseInterceptors(FilesInterceptor('files', 10))
   create(
@@ -49,7 +43,6 @@ export class MedidasController {
     return this.medidasService.create(dto, dto.userId, files ?? []);
   }
 
-  // ── PATCH /medidas/:id ───────────────────────────────────────────────────────
   @Patch(':id')
   @UseInterceptors(FilesInterceptor('files', 10))
   update(

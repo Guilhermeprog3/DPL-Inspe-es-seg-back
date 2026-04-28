@@ -10,7 +10,6 @@ import { PontosModule } from './pontos/pontos.module';
 import { InspecoesModule } from './inspecoes/inspecoes.module';
 @Module({
   imports: [
-    // O ConfigModule DEVE vir antes do PrismaModule para carregar as variáveis
     ConfigModule.forRoot({ isGlobal: true }), 
     PrismaModule,
     AuthModule,

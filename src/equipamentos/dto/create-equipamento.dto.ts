@@ -8,10 +8,9 @@ import {
 } from 'class-validator';
 
 export class CreateEquipamentoDto {
-  // ── Obrigatórios ────────────────────────────────────────────────────────────
   @IsString()
   @IsNotEmpty()
-  codigo!: string; // Nº Série do Cilindro (extintor) ou Nº Série/Patrimônio (demais)
+  codigo!: string;
 
   @IsString()
   @IsNotEmpty()
@@ -25,42 +24,38 @@ export class CreateEquipamentoDto {
   @IsNotEmpty()
   uf!: string;
 
-  // ── Descrição ────────────────────────────────────────────────────────────────
   @IsString()
   @IsOptional()
-  nome?: string; // Nome / Descrição informada pelo usuário
+  nome?: string;
 
-  // ── Vínculo com ponto ────────────────────────────────────────────────────────
   @IsUUID()
   @IsOptional()
   pontoId?: string;
 
-  // ── Campos específicos do Extintor ───────────────────────────────────────────
   @IsString()
   @IsOptional()
-  extintorClasse?: string; // ABC, BC, AB, A, D, K ou valor manual
+  extintorClasse?: string;
 
   @IsNumberString()
   @IsOptional()
-  extintorCarga?: string; // kg — recebido como string, convertido no service
+  extintorCarga?: string;
 
   @IsString()
   @IsOptional()
-  agente?: string; // Pó ABC, CO₂, Água etc. (também usado por demais tipos)
+  agente?: string;
 
   @IsString()
   @IsOptional()
-  serieInmetro?: string; // Nº do Selo INMETRO
+  serieInmetro?: string;
 
   @IsString()
   @IsOptional()
-  serieCilindro?: string; // Nº de Série do Cilindro (gravado no corpo metálico)
+  serieCilindro?: string;
 
   @IsDateString()
   @IsOptional()
-  proximaRecarga?: string; // Validade da Recarga (ISO date string)
+  proximaRecarga?: string;
 
-  // ── Campos legados / demais tipos ────────────────────────────────────────────
   @IsString()
   @IsOptional()
   fabricante?: string;

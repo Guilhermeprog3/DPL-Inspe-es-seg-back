@@ -1,9 +1,8 @@
-// src/medidas/medidas.service.ts
+
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Client } from 'ssh2';
 
-/** Normaliza qualquer entrada em string[] limpo */
 function parseInspecoes(raw: string | string[] | null | undefined): string[] {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw.map(s => String(s).trim()).filter(Boolean);
@@ -11,7 +10,6 @@ function parseInspecoes(raw: string | string[] | null | undefined): string[] {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) return parsed.map(String).map(s => s.trim()).filter(Boolean);
   } catch {}
-  // Fallback: string simples legada (ex: "INS-001")
   return raw.trim() ? [raw.trim()] : [];
 }
 
@@ -19,17 +17,14 @@ function parseInspecoes(raw: string | string[] | null | undefined): string[] {
 export class MedidasService {
   constructor(private prisma: PrismaService) {}
 
-  /** Enriquece o objeto retornado pelo Prisma adicionando o array de inspeções já parseado */
   private enrichMedida(medida: any) {
     return {
       ...medida,
-      // Prioriza o campo novo (array JSON); faz fallback para o campo legado (string)
       numerosInspecao: parseInspecoes(medida.numerosInspecao ?? medida.numeroInspecao),
     };
   }
 
   async create(dto: any, userId: string, files: Express.Multer.File[]) {
-    // Busca uf e regional do usuário no banco — nunca confia no body
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       select: { uf: true, regional: true },
@@ -56,7 +51,6 @@ export class MedidasService {
         uf: user.uf,
         regional: user.regional,
         numerosInspecao: inspecoesArray.length ? JSON.stringify(inspecoesArray) : null,
-        // Zera o campo legado para novos registros
         numeroInspecao: null,
       },
     });
@@ -127,11 +121,6 @@ export class MedidasService {
     }
   }
 
-  /**
-   * Retorna todas as medidas visíveis para o usuário:
-   * - ADM: vê todas as medidas.
-   * - Demais: vê apenas medidas onde medida.uf === user.uf E medida.regional === user.regional.
-   */
   async findAll(
     userId: string,
     role: string,

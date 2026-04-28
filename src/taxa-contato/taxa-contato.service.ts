@@ -5,10 +5,8 @@ import { PrismaPfuncService } from '../prisma/prisma-pfunc.service';
 export class TaxaContatoService {
   constructor(private prismaPfunc: PrismaPfuncService) {}
 
-  // Renomeado para coincidir com o Controller
   async buscarColaboradoresRecentes() {
     try {
-      // Busca na View dbo.vw_funcionarios pegando apenas chapa e nome
       const funcionarios = await this.prismaPfunc.vwFuncionario.findMany({
         select: {
           chapa: true,

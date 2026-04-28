@@ -64,14 +64,6 @@ export class EquipamentosService {
     });
   }
 
-  /**
-   * Retorna apenas equipamentos que ainda não estão vinculados a nenhum
-   * PontoInstalacao. Usado pela aba de Vínculo no cadastro de locais.
-   *
-   * A condição `pontoInstalacao: null` funciona porque o Prisma trata a
-   * relação inversa 1-to-1: se nenhum PontoInstalacao aponta para este
-   * equipamento via equipamentoAtualId, o join retorna null.
-   */
   async findDisponiveis() {
     return this.prisma.equipamento.findMany({
       where: {

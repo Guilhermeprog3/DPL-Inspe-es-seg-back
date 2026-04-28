@@ -51,7 +51,7 @@ async findOne(@Param('id') id: string) {
   return this.usersService.findOne(id);
 }
 
-@Delete(':id') // Esta é a rota que está faltando!
+@Delete(':id')
   async remove(@Param('id') id: string) {
     return this.usersService.remove(id);
   }

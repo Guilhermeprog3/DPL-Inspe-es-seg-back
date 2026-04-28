@@ -26,7 +26,6 @@ export class InspecoesService {
 
   return this.prisma.$transaction(async (tx) => {
     
-    // 2. Criar o registro da Inspeção usando CONNECT para as relações
     const inspecao = await tx.inspecao.create({
   data: {
     status: data.status,
@@ -35,8 +34,6 @@ export class InspecoesService {
     regional: ponto.regional,
     base: ponto.base,
     localNome: ponto.nome,
-    // Comente a linha abaixo se o erro de "known properties" persistir
-    // observacoes: data.observacoes || null, 
     
     ponto: { connect: { id: ponto.id } },
     equipamento: { connect: { id: equipamento.id } },
@@ -44,7 +41,6 @@ export class InspecoesService {
   },
 });
 
-    // 3. Atualizar o Status do Equipamento
     let novoStatusEquipamento = equipamento.status;
     if (data.status === 'REPROVADO') {
       novoStatusEquipamento = 'manutencao';
@@ -100,7 +96,7 @@ async buscarPorId(id: string) {
         inspetor: { select: { nome: true, sobrenome: true } },
         equipamento: { select: { codigo: true, tipo: true } },
         ponto: true,
-        acoesCorretivas: true, // Traz as ações vinculadas
+        acoesCorretivas: true,
       },
       orderBy: { data: 'desc' },
     });

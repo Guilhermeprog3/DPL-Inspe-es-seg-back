@@ -4,9 +4,9 @@ import { InspecoesController } from './inspecoes.controller';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule], // Importa o módulo que provê o PrismaService
+  imports: [PrismaModule],
   controllers: [InspecoesController],
   providers: [InspecoesService],
-  exports: [InspecoesService], // Permite que outros módulos usem o service de inspeções
+  exports: [InspecoesService],
 })
 export class InspecoesModule {}

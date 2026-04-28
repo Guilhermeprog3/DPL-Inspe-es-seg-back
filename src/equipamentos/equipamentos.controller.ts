@@ -28,7 +28,6 @@ export class EquipamentosController {
     return this.equipamentosService.findAll();
   }
 
-  // ⚠️ DEVE vir ANTES de /:id — senão o NestJS lê "disponiveis" como parâmetro de ID
   @Get('disponiveis')
   findDisponiveis() {
     return this.equipamentosService.findDisponiveis();

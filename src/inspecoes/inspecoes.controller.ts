@@ -32,26 +32,22 @@ export class InspecoesController {
 
   @Get()
   async listarTodas(@Req() req: any) {
-    this.checkInspecaoRole(req.user); // Valida Permissão
+    this.checkInspecaoRole(req.user);
     return this.inspecoesService.listarTodas();
   }
 
   @Get(':id')
   async buscarPorId(@Param('id') id: string, @Req() req: any) {
-    this.checkInspecaoRole(req.user); // Valida Permissão
+    this.checkInspecaoRole(req.user);
     return this.inspecoesService.buscarPorId(id);
   }
 
   @Get('ponto/:pontoId')
   async buscarPorPonto(@Param('pontoId') pontoId: string, @Req() req: any) {
-    this.checkInspecaoRole(req.user); // Valida Permissão
+    this.checkInspecaoRole(req.user);
     return this.inspecoesService.buscarHistoricoPorPonto(pontoId);
   }
 
-  /**
-   * Centraliza a lógica de permissão para Inspeções
-   * Permite apenas Administradores e Inspetores
-   */
   private checkInspecaoRole(user: any) {
     const rolesPermitidos = ['inspetor', 'ADM'];
     
