@@ -1,14 +1,12 @@
 generator client {
   provider = "prisma-client-js"
-  // Remova o engineType se houver, ou deixe como "library" se estiver no Windows
 }
 
 datasource db {
   provider = "sqlserver"
-  url      = env("DATABASE_URL") // ADICIONE ESTA LINHA
+  url      = env("DATABASE_URL")
 }
 
-// Seus models (User, Equipamento, etc) continuam abaixo...
 
 model User {
   id        String   @id @default(uuid()) @db.NVarChar(450)
@@ -51,7 +49,6 @@ model AcaoCorretiva {
   emailsCopia        String?   @db.NVarChar(Max)
   criadoEm           DateTime  @default(now())
 
-  // Relacionamentos
   inspecaoId         String    @db.NVarChar(450)
   inspecao           Inspecao  @relation(fields: [inspecaoId], references: [id], onDelete: Cascade)
 }
@@ -59,19 +56,15 @@ model AcaoCorretiva {
 model Equipamento {
   id    String @id @default(uuid()) @db.NVarChar(450)
 
-  // ── Identificação principal ───────────────────────────────────────────────
-  // Para extintores, 'codigo' recebe o Nº de Série do Cilindro.
-  // Para os demais tipos, recebe o Nº de Série / Patrimônio.
   codigo  String @unique @db.NVarChar(450)
 
   tipo    String @db.NVarChar(Max)
   status  String @db.NVarChar(Max)
   uf      String @db.NVarChar(Max)
 
-  // ── Descrição livre ───────────────────────────────────────────────────────
+
   nome    String? @db.NVarChar(Max) // Nome / Descrição informada no cadastro
 
-  // ── Campos específicos do Extintor ────────────────────────────────────────
   extintorClasse  String?   @db.NVarChar(Max)  // ABC, BC, AB, A, D, K ou manual
   extintorCarga   Decimal?  @db.Decimal(8, 2)  // kg
   agente          String?   @db.NVarChar(Max)  // Pó ABC, CO₂, Água etc.
@@ -79,10 +72,7 @@ model Equipamento {
   serieCilindro   String?   @db.NVarChar(450)  // Nº de Série do Cilindro (= codigo p/ extintores)
   proximaRecarga  DateTime? // Validade da Recarga
 
-  // ── Campos genéricos (demais tipos) ──────────────────────────────────────
-  // 'agente' já cobre o campo livre de agente/especificação dos não-extintores
 
-  // ── Campos legados (mantidos para compatibilidade) ────────────────────────
   fabricante      String?   @db.NVarChar(Max)
   modelo          String?   @db.NVarChar(Max)
   capacidade      String?   @db.NVarChar(Max)
@@ -135,7 +125,7 @@ model Medida {
   criadoPorId   String   @db.NVarChar(450)
   criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id], onDelete: Cascade)
   numeroInspecao String?  @db.NVarChar(Max)
-  numerosInspecao String?  @db.NVarChar(Max)  // JSON array: ["INS-001","INS-002"]
+  numerosInspecao String?  @db.NVarChar(Max) 
   diasSuspensao  Int?
   nomeSupervisor String   @db.NVarChar(Max)
   anexos MedidaAnexo[]
@@ -167,9 +157,9 @@ model TaxaContato {
 
 model MedidaAnexo {
   id        String   @id @default(uuid()) @db.NVarChar(450)
-  url       String   @db.NVarChar(Max) // Caminho onde o arquivo ficou no SFTP
-  nome      String   @db.NVarChar(Max) // Nome original do arquivo (ex: foto.jpg)
-  tipo      String   @db.NVarChar(Max) // Extensão/Mimetype (ex: image/jpeg)
+  url       String   @db.NVarChar(Max)
+  nome      String   @db.NVarChar(Max)
+  tipo      String   @db.NVarChar(Max)
   criadoEm  DateTime @default(now())
 
   // Relacionamento com a Medida
