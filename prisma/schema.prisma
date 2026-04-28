@@ -134,25 +134,33 @@ model Medida {
 }
 
 
-model TaxaContato {
-  chave        Int      @id
-  chapa        String?
-  nome         String?
-  cpf          String?
-  funcao       String?  @map("FUNCAO")
-  secao        String?
-  codsituacao  String?
-  local        String?
-  regional     String?
-  area         String?
-  equipe       String?
-  supervisor   String?
-  data         String?
-  base         String?
-  email        String?
-  filial       String?
+// No seu arquivo prisma/schema.prisma
 
-  @@map("taxa de contato")
+model TaxaContato {
+  // Use o nome 'chave' para evitar confusão com o erro do TS
+id          Int      @id @default(autoincrement()) @map("ID")
+  
+  // Se a chapa não é única, REMOVA o @unique
+  chapa       String   @map("CHAPA") @db.NVarChar(Max)
+  
+  nome        String   @map("NOME") @db.NVarChar(Max)
+  funcao      String   @map("FUNCAO") @db.NVarChar(Max)
+  secao       String   @map("SECAO") @db.NVarChar(Max)
+  codsituacao String   @map("CODSITUACAO") @db.NVarChar(Max)
+  local       String?  @map("LOCAL") @db.NVarChar(Max)
+  regional    String?  @map("REGIONAL") @db.NVarChar(Max)
+  area        String?  @map("AREA") @db.NVarChar(Max)
+  equipe      String?  @map("EQUIPE") @db.NVarChar(Max)
+  supervisor  String?  @map("SUPERVISOR") @db.NVarChar(Max)
+  ddata        String?  @map("DATA") @db.NVarChar(Max)
+  base        String?  @map("BASE") @db.NVarChar(Max)
+  email       String?  @map("EMAIL") @db.NVarChar(Max)
+  filial      String?  @map("FILIAL") @db.NVarChar(Max)
+
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@map("Taxa_Contato") 
 }
 
 model MedidaAnexo {

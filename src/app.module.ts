@@ -1,13 +1,14 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config'; // Adicione este import
+import { ConfigModule } from '@nestjs/config';
 import { PrismaModule } from './prisma/prisma.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import { MedidasModule } from './medidas/medidas.module';
-import { TaxaContatoModule } from './taxa-contato/taxa-contato.module';
+import { BaseGenteModule } from './Base_Gente/base-gente.module';
 import { EquipamentosModule } from './equipamentos/equipamentos.module';
 import { PontosModule } from './pontos/pontos.module';
 import { InspecoesModule } from './inspecoes/inspecoes.module';
+import { TaxaContatoModule } from './taxa_contato/taxa-contato.module';
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }), 
@@ -15,10 +16,11 @@ import { InspecoesModule } from './inspecoes/inspecoes.module';
     AuthModule,
     UsersModule,
     MedidasModule,
-    TaxaContatoModule,
+    BaseGenteModule,
     EquipamentosModule,
     PontosModule,
-    InspecoesModule
+    InspecoesModule,
+    TaxaContatoModule
   ],
 })
 export class AppModule {}

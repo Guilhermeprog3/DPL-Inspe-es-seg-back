@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaPfuncService } from '../prisma/prisma-pfunc.service';
 
 @Injectable()
-export class TaxaContatoService {
+export class BaseGenteService {
   constructor(private prismaPfunc: PrismaPfuncService) {}
 
   async buscarColaboradoresRecentes() {
