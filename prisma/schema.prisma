@@ -162,7 +162,6 @@ model MedidaAnexo {
   tipo      String   @db.NVarChar(Max)
   criadoEm  DateTime @default(now())
 
-  // Relacionamento com a Medida
   medidaId  String   @db.NVarChar(450)
   medida    Medida   @relation(fields: [medidaId], references: [id], onDelete: Cascade)
 }

@@ -1,4 +1,3 @@
-// src/medidas/medidas.controller.ts
 import {
   Controller, Get, Post, Patch, Delete, Param,
   Body, Req, UseInterceptors, UploadedFiles,
@@ -6,8 +5,11 @@ import {
 } from '@nestjs/common';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { MedidasService } from './medidas.service';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('medidas')
+@UseGuards(JwtAuthGuard)
 export class MedidasController {
   constructor(private readonly medidasService: MedidasService) {}
 
