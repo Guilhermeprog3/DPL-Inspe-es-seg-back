@@ -248,6 +248,17 @@ export class TaxaContatoService {
 
   // Criar novo registro
   async createOne(body: Record<string, any>) {
+    // Busca o mês mais recente do banco para associar ao novo registro
+    const mesAtual = await this.getMesAtualBanco();
+
+    // Monta a data no formato que o banco usa: "YYYY-01-MM 00:00:00.000"
+    // Banco armazena YYYY-DD-MM onde DD é sempre 01
+    let dataFormatada: string | null = null;
+    if (mesAtual) {
+      dataFormatada = `${mesAtual.ano}-01-${mesAtual.mes} 00:00:00.000`;
+      this.logger.debug(`[createOne] data gerada para mês mais recente: ${dataFormatada}`);
+    }
+
     const createData: Prisma.TaxaContatoCreateInput = {
       chapa:       body.chapa       ?? null,
       nome:        body.nome        ?? null,
@@ -264,6 +275,52 @@ export class TaxaContatoService {
       filial:      body.filial      ?? null,
     };
 
+    // Insere o registro com a data do mês mais recente via raw query
+    // pois o campo DATA é NVarChar(Max) e não está no TaxaContatoCreateInput tipado
+    if (dataFormatada) {
+      const params: any[] = [
+        createData.chapa       ?? null,
+        createData.nome        ?? null,
+        createData.funcao      ?? null,
+        createData.secao       ?? null,
+        createData.codsituacao ?? null,
+        createData.local       ?? null,
+        createData.regional    ?? null,
+        createData.area        ?? null,
+        createData.equipe      ?? null,
+        createData.supervisor  ?? null,
+        createData.base        ?? null,
+        createData.email       ?? null,
+        createData.filial      ?? null,
+        dataFormatada,
+      ];
+
+      await this.prisma.$queryRawUnsafe(`
+        INSERT INTO [Taxa_Contato]
+          ([CHAPA],[NOME],[FUNCAO],[SECAO],[CODSITUACAO],[LOCAL],[REGIONAL],
+           [AREA],[EQUIPE],[SUPERVISOR],[BASE],[EMAIL],[FILIAL],[DATA],
+           [updatedAt],[createdAt])
+        VALUES
+          (@P1,@P2,@P3,@P4,@P5,@P6,@P7,
+           @P8,@P9,@P10,@P11,@P12,@P13,@P14,
+           GETDATE(),GETDATE())
+      `, ...params);
+
+      // Retorna o registro recém-criado
+      const inserted = await this.prisma.$queryRawUnsafe<any[]>(`
+        SELECT TOP 1
+          [ID] AS id, [CHAPA] AS chapa, [NOME] AS nome, [FUNCAO] AS funcao,
+          [CODSITUACAO] AS codsituacao, [REGIONAL] AS regional, [FILIAL] AS filial,
+          CAST([DATA] AS NVARCHAR(MAX)) AS data
+        FROM [Taxa_Contato]
+        WHERE [CHAPA] = @P1 AND CAST([DATA] AS NVARCHAR(MAX)) LIKE @P2
+        ORDER BY [ID] DESC
+      `, createData.chapa ?? '', `${mesAtual!.ano}-01-${mesAtual!.mes}%`);
+
+      return inserted[0] ?? null;
+    }
+
+    // Fallback: sem data (não há meses no banco ainda)
     return this.prisma.taxaContato.create({ data: createData });
   }
 
