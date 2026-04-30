@@ -9,8 +9,6 @@ export class TaxaContatoService {
 
   constructor(private prisma: PrismaService) {}
 
-  // ── Retorna o mês mais recente disponível no banco ────────────────────────
-  // Banco usa formato YYYY-DD-MM: posição 1-4=ano, 6-7=dia, 9-10=mês
   private async getMesAtualBanco(): Promise<{ ano: string; mes: string } | null> {
     const result = await this.prisma.$queryRawUnsafe<any[]>(`
       SELECT TOP 1
@@ -88,6 +86,7 @@ export class TaxaContatoService {
         [FUNCAO]      AS funcao,
         [SECAO]       AS secao,
         [CODSITUACAO] AS codsituacao,
+        [JUSTIFICATIVA] AS justificativa,
         [LOCAL]       AS [local],
         [REGIONAL]    AS regional,
         [AREA]        AS area,
@@ -107,7 +106,6 @@ export class TaxaContatoService {
     return this.prisma.$queryRawUnsafe<any[]>(sql, ...params);
   }
 
-  // ── Associar/Desassociar: busca apenas do mês mais recente ───────────────
   async findAllForAssociation(user: any) {
     const { role } = user;
     const allowedRoles = ['admin', 'gerente', 'coordenador', 'supervisor'];
@@ -117,15 +115,9 @@ export class TaxaContatoService {
       );
     }
 
-    // Descobre o mês mais recente disponível
     const mesAtual = await this.getMesAtualBanco();
-    this.logger.debug(`[findAllForAssociation] mês mais recente: ${JSON.stringify(mesAtual)}`);
+    if (!mesAtual) return [];
 
-    if (!mesAtual) {
-      return [];
-    }
-
-    // Retorna apenas registros do mês mais recente
     const sql = `
       SELECT
         [ID]          AS id,
@@ -149,8 +141,6 @@ export class TaxaContatoService {
     return this.prisma.$queryRawUnsafe<any[]>(sql, mesAtual.ano, mesAtual.mes);
   }
 
-  // ── Atualiza apenas o registro do mês mais recente para o colaborador ────
-  // Garante que não altera registros de meses anteriores
   private async getIdMesAtual(chapa: string): Promise<number | null> {
     const mesAtual = await this.getMesAtualBanco();
     if (!mesAtual) return null;
@@ -167,166 +157,122 @@ export class TaxaContatoService {
     return result.length > 0 ? result[0].id : null;
   }
 
-  // Atualização genérica — apenas campos editáveis pelo usuário
-  async updateOne(id: number, body: Record<string, any>) {
+  async updateOne(id: number, body: Record<string, any>, user: any) {
+    const registroAntigo = await this.prisma.taxaContato.findUnique({ where: { id } });
+    if (!registroAntigo) throw new Error('Registro não encontrado');
+
     const updateData: Prisma.TaxaContatoUpdateInput = {};
+    const logs: any[] = [];
 
-    if (body.chapa       !== undefined) updateData.chapa       = body.chapa;
-    if (body.nome        !== undefined) updateData.nome        = body.nome;
-    if (body.funcao      !== undefined) updateData.funcao      = body.funcao;
-    if (body.secao       !== undefined) updateData.secao       = body.secao;
-    if (body.codsituacao !== undefined) updateData.codsituacao = body.codsituacao;
-    if (body.local       !== undefined) updateData.local       = body.local;
-    if (body.regional    !== undefined) updateData.regional    = body.regional;
-    if (body.area        !== undefined) updateData.area        = body.area;
-    if (body.equipe      !== undefined) updateData.equipe      = body.equipe;
-    if (body.supervisor  !== undefined) updateData.supervisor  = body.supervisor;
-    if (body.base        !== undefined) updateData.base        = body.base;
-    if (body.email       !== undefined) updateData.email       = body.email;
-    if (body.filial      !== undefined) updateData.filial      = body.filial;
+    // Campos monitorados para log
+    const camposMonitorados = ['chapa', 'nome', 'funcao', 'secao', 'codsituacao', 'justificativa', 'local', 'regional', 'area', 'equipe', 'supervisor', 'base', 'email', 'filial'];
 
-    return this.prisma.taxaContato.update({ where: { id }, data: updateData });
+    for (const campo of camposMonitorados) {
+      if (body[campo] !== undefined && String(body[campo]) !== String(registroAntigo[campo])) {
+        updateData[campo] = body[campo];
+        logs.push({
+          taxaContatoId: id,
+          usuarioNome: `${user.nome} ${user.sobrenome}`,
+          usuarioEmail: user.email,
+          acao: 'UPDATE',
+          campoAlterado: campo.toUpperCase(),
+          valorAntigo: String(registroAntigo[campo] || ''),
+          valorNovo: String(body[campo] || ''),
+        });
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.taxaContato.update({ where: { id }, data: updateData });
+      if (logs.length > 0) {
+        await (tx as any).taxaContatoLog.createMany({ data: logs });
+      }
+      return updated;
+    });
   }
 
-  // Associar / transferir — atualiza apenas o registro do mês mais recente
-  async claimCollaborator(
-    id: number,
-    payload: {
-      supervisorName: string;
-      supervisorEmail: string;
-      area?: string;
-      base?: string;
-      regional?: string;
-    },
-  ) {
-    const updateData: Prisma.TaxaContatoUpdateInput = {
+  async claimCollaborator(id: number, payload: any, user: any) {
+    const registro = await this.prisma.taxaContato.findUnique({ where: { id } });
+    if (!registro) throw new Error('Registro não encontrado');
+
+    const idAlvo = registro.chapa ? (await this.getIdMesAtual(registro.chapa)) || id : id;
+
+    return this.updateOne(idAlvo, {
       supervisor: payload.supervisorName,
-      email:      payload.supervisorEmail,
-    };
-
-    if (payload.area     !== undefined) updateData.area     = payload.area;
-    if (payload.base     !== undefined) updateData.base     = payload.base;
-    if (payload.regional !== undefined) updateData.regional = payload.regional;
-
-    // Busca a chapa do registro para encontrar o ID do mês mais recente
-    const registro = await this.prisma.taxaContato.findUnique({
-      where: { id },
-      select: { chapa: true },
-    });
-
-    if (registro?.chapa) {
-      const idMesAtual = await this.getIdMesAtual(registro.chapa);
-      if (idMesAtual && idMesAtual !== id) {
-        // Atualiza o registro do mês mais recente em vez do passado
-        this.logger.debug(`[claimCollaborator] redirecionando id ${id} → ${idMesAtual} (mês mais recente)`);
-        return this.prisma.taxaContato.update({ where: { id: idMesAtual }, data: updateData });
-      }
-    }
-
-    return this.prisma.taxaContato.update({ where: { id }, data: updateData });
+      email: payload.supervisorEmail,
+      area: payload.area,
+      base: payload.base,
+      regional: payload.regional
+    }, user);
   }
 
-  // Liberar supervisor — atualiza apenas o registro do mês mais recente
-  async removeFromSupervision(id: number) {
-    const registro = await this.prisma.taxaContato.findUnique({
-      where: { id },
-      select: { chapa: true },
-    });
+  async removeFromSupervision(id: number, user: any) {
+    const registro = await this.prisma.taxaContato.findUnique({ where: { id } });
+    if (!registro) throw new Error('Registro não encontrado');
 
-    const updateData: Prisma.TaxaContatoUpdateInput = { supervisor: null, email: null };
+    const idAlvo = registro.chapa ? (await this.getIdMesAtual(registro.chapa)) || id : id;
 
-    if (registro?.chapa) {
-      const idMesAtual = await this.getIdMesAtual(registro.chapa);
-      if (idMesAtual && idMesAtual !== id) {
-        this.logger.debug(`[removeFromSupervision] redirecionando id ${id} → ${idMesAtual} (mês mais recente)`);
-        return this.prisma.taxaContato.update({ where: { id: idMesAtual }, data: updateData });
-      }
-    }
-
-    return this.prisma.taxaContato.update({ where: { id }, data: updateData });
+    return this.updateOne(idAlvo, { supervisor: null, email: null }, user);
   }
 
-  // Criar novo registro
-  async createOne(body: Record<string, any>) {
-    // Busca o mês mais recente do banco para associar ao novo registro
+  async createOne(body: Record<string, any>, user: any) {
     const mesAtual = await this.getMesAtualBanco();
-
-    // Monta a data no formato que o banco usa: "YYYY-01-MM 00:00:00.000"
-    // Banco armazena YYYY-DD-MM onde DD é sempre 01
     let dataFormatada: string | null = null;
     if (mesAtual) {
       dataFormatada = `${mesAtual.ano}-01-${mesAtual.mes} 00:00:00.000`;
-      this.logger.debug(`[createOne] data gerada para mês mais recente: ${dataFormatada}`);
     }
 
-    const createData: Prisma.TaxaContatoCreateInput = {
-      chapa:       body.chapa       ?? null,
-      nome:        body.nome        ?? null,
-      funcao:      body.funcao      ?? null,
-      secao:       body.secao       ?? null,
-      codsituacao: body.codsituacao ?? null,
-      local:       body.local       ?? null,
-      regional:    body.regional    ?? null,
-      area:        body.area        ?? null,
-      equipe:      body.equipe      ?? null,
-      supervisor:  body.supervisor  ?? null,
-      base:        body.base        ?? null,
-      email:       body.email       ?? null,
-      filial:      body.filial      ?? null,
-    };
-
-    // Insere o registro com a data do mês mais recente via raw query
-    // pois o campo DATA é NVarChar(Max) e não está no TaxaContatoCreateInput tipado
-    if (dataFormatada) {
-      const params: any[] = [
-        createData.chapa       ?? null,
-        createData.nome        ?? null,
-        createData.funcao      ?? null,
-        createData.secao       ?? null,
-        createData.codsituacao ?? null,
-        createData.local       ?? null,
-        createData.regional    ?? null,
-        createData.area        ?? null,
-        createData.equipe      ?? null,
-        createData.supervisor  ?? null,
-        createData.base        ?? null,
-        createData.email       ?? null,
-        createData.filial      ?? null,
-        dataFormatada,
-      ];
-
-      await this.prisma.$queryRawUnsafe(`
+    return this.prisma.$transaction(async (tx) => {
+      await tx.$queryRawUnsafe(`
         INSERT INTO [Taxa_Contato]
-          ([CHAPA],[NOME],[FUNCAO],[SECAO],[CODSITUACAO],[LOCAL],[REGIONAL],
+          ([CHAPA],[NOME],[FUNCAO],[SECAO],[CODSITUACAO],[JUSTIFICATIVA],[LOCAL],[REGIONAL],
            [AREA],[EQUIPE],[SUPERVISOR],[BASE],[EMAIL],[FILIAL],[DATA],
            [updatedAt],[createdAt])
         VALUES
-          (@P1,@P2,@P3,@P4,@P5,@P6,@P7,
-           @P8,@P9,@P10,@P11,@P12,@P13,@P14,
-           GETDATE(),GETDATE())
-      `, ...params);
+          (@P1,@P2,@P3,@P4,@P5,@P6,@P7,@P8,@P9,@P10,@P11,@P12,@P13,@P14,@P15,GETDATE(),GETDATE())
+      `, 
+      body.chapa || null, body.nome || null, body.funcao || null, body.secao || null, 
+      body.codsituacao || null, body.justificativa || null, body.local || null, body.regional || null,
+      body.area || null, body.equipe || null, body.supervisor || null, body.base || null, 
+      body.email || null, body.filial || null, dataFormatada);
 
-      // Retorna o registro recém-criado
-      const inserted = await this.prisma.$queryRawUnsafe<any[]>(`
-        SELECT TOP 1
-          [ID] AS id, [CHAPA] AS chapa, [NOME] AS nome, [FUNCAO] AS funcao,
-          [CODSITUACAO] AS codsituacao, [REGIONAL] AS regional, [FILIAL] AS filial,
-          CAST([DATA] AS NVARCHAR(MAX)) AS data
-        FROM [Taxa_Contato]
-        WHERE [CHAPA] = @P1 AND CAST([DATA] AS NVARCHAR(MAX)) LIKE @P2
-        ORDER BY [ID] DESC
-      `, createData.chapa ?? '', `${mesAtual!.ano}-01-${mesAtual!.mes}%`);
+      const inserted: any[] = await tx.$queryRawUnsafe(`SELECT TOP 1 [ID] FROM [Taxa_Contato] ORDER BY [ID] DESC`);
+      const newId = inserted[0].ID;
 
-      return inserted[0] ?? null;
-    }
+      await (tx as any).taxaContatoLog.create({
+        data: {
+          taxaContatoId: newId,
+          usuarioNome: `${user.nome} ${user.sobrenome}`,
+          usuarioEmail: user.email,
+          acao: 'CREATE',
+          campoAlterado: 'REGISTRO',
+          valorAntigo: '',
+          valorNovo: `Criado: ${body.nome} (${body.chapa})`
+        }
+      });
 
-    // Fallback: sem data (não há meses no banco ainda)
-    return this.prisma.taxaContato.create({ data: createData });
+      return { id: newId, ...body };
+    });
   }
 
-  // Excluir registro
-  async deleteOne(id: number) {
-    return this.prisma.taxaContato.delete({ where: { id } });
+  async deleteOne(id: number, user: any) {
+    const registro = await this.prisma.taxaContato.findUnique({ where: { id } });
+    if (!registro) throw new Error('Registro não encontrado');
+
+    return this.prisma.$transaction(async (tx) => {
+      await (tx as any).taxaContatoLog.create({
+        data: {
+          taxaContatoId: id,
+          usuarioNome: `${user.nome} ${user.sobrenome}`,
+          usuarioEmail: user.email,
+          acao: 'DELETE',
+          campoAlterado: 'REGISTRO',
+          valorAntigo: `Chapa: ${registro.chapa} | Nome: ${registro.nome}`,
+          valorNovo: 'EXCLUÍDO'
+        }
+      });
+      return tx.taxaContato.delete({ where: { id } });
+    });
   }
 
   async getStats() {

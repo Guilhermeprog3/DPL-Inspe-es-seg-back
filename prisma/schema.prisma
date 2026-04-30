@@ -110,24 +110,24 @@ model Inspecao {
   acoesCorretivas AcaoCorretiva[]
 }
 model Medida {
-  id        String   @id @default(uuid()) @db.NVarChar(450)
+  id        Int      @id @default(autoincrement())
   data          DateTime @default(now(), map: "DF__Medida__data__6D0D32F4")
-  colaborador   String   @db.NVarChar(Max)
-  matricula     String   @db.NVarChar(Max)
-  supervisor    String   @db.NVarChar(Max)
-  tipo          String   @db.NVarChar(Max)
-  ocorrencia    String   @db.NVarChar(Max)
-  medida        String   @db.NVarChar(Max)
-  gravidade     String   @db.NVarChar(Max)
-  classificacao String   @db.NVarChar(Max)
+  colaborador   String?   @db.NVarChar(Max)
+  matricula     String?   @db.NVarChar(Max)
+  supervisor    String?   @db.NVarChar(Max)
+  tipo          String?   @db.NVarChar(Max)
+  ocorrencia    String?   @db.NVarChar(Max)
+  medida        String?   @db.NVarChar(Max)
+  gravidade     String?   @db.NVarChar(Max)
+  classificacao String?   @db.NVarChar(Max)
   origem        String?  @db.NVarChar(Max)
-  status        String   @default("EM ANDAMENTO", map: "DF__Medida__status__6E01572D") @db.NVarChar(Max)
+  status        String?   @default("EM ANDAMENTO", map: "DF__Medida__status__6E01572D") @db.NVarChar(Max)
   criadoPorId   String   @db.NVarChar(450)
   criadoPor     User     @relation("MedidasCriadas", fields: [criadoPorId], references: [id], onDelete: Cascade)
   numeroInspecao String?  @db.NVarChar(Max)
   numerosInspecao String?  @db.NVarChar(Max) 
   diasSuspensao  Int?
-  nomeSupervisor String   @db.NVarChar(Max)
+  nomeSupervisor String?   @db.NVarChar(Max)
   anexos MedidaAnexo[]
   uf             String?  @db.NVarChar(Max)
   regional       String?  @db.NVarChar(Max)
@@ -135,12 +135,27 @@ model Medida {
 
 
 // No seu arquivo prisma/schema.prisma
+model TaxaContatoLog {
+  id            Int      @id @default(autoincrement()) @map("ID")
+  taxaContatoId Int      @map("TaxaContatoId")
+  usuarioNome   String?  @map("UsuarioNome") @db.NVarChar(Max)
+  usuarioEmail  String?  @map("UsuarioEmail") @db.NVarChar(Max)
+  acao          String?  @map("Acao") @db.NVarChar(50)
+  campoAlterado String?  @map("CampoAlterado") @db.NVarChar(100)
+  valorAntigo   String?  @map("ValorAntigo") @db.NVarChar(Max)
+  valorNovo     String?  @map("ValorNovo") @db.NVarChar(Max)
+  dataAlteracao DateTime @default(now()) @map("DataAlteracao")
+
+  @@map("Taxa_Contato_Logs")
+}
 
 model TaxaContato {
   id           Int      @id @default(autoincrement()) @map("ID")
   
   // Adicionado ? nos campos que podem vir nulos do banco
   chapa        String?  @map("CHAPA") @db.NVarChar(Max)
+  justificativa String?  @map("JUSTIFICATIVA") @db.NVarChar(Max)
+  cpf           String?  @map("CPF") @db.NVarChar(Max)
   nome         String?  @map("NOME") @db.NVarChar(Max)
   funcao       String?  @map("FUNCAO") @db.NVarChar(Max)
   secao        String?  @map("SECAO") @db.NVarChar(Max)
@@ -166,12 +181,12 @@ model TaxaContato {
 }
 
 model MedidaAnexo {
-  id        String   @id @default(uuid()) @db.NVarChar(450)
+  id        Int      @id @default(autoincrement())
   url       String   @db.NVarChar(Max)
   nome      String   @db.NVarChar(Max)
   tipo      String   @db.NVarChar(Max)
   criadoEm  DateTime @default(now())
 
-  medidaId  String   @db.NVarChar(450)
+  medidaId  Int
   medida    Medida   @relation(fields: [medidaId], references: [id], onDelete: Cascade)
 }

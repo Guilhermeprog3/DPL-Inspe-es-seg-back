@@ -1,4 +1,3 @@
-
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Client } from 'ssh2';
@@ -56,6 +55,7 @@ export class MedidasService {
     });
 
     if (files && files.length > 0) {
+      // medida.id agora é retornado como number pelo Prisma após a mudança no schema
       await this.processFiles(files, medida.id);
     }
 
@@ -63,8 +63,13 @@ export class MedidasService {
   }
 
   async update(id: string, dto: any, userId: string, files: Express.Multer.File[]) {
-    const medidaExistente = await this.prisma.medida.findUnique({ where: { id } });
+    // Conversão de id (string da URL) para Number para satisfazer o Prisma
+    const medidaExistente = await this.prisma.medida.findUnique({ 
+      where: { id: Number(id) } 
+    });
+
     if (!medidaExistente) throw new NotFoundException('Medida não encontrada');
+    
     if (medidaExistente.criadoPorId !== userId) {
       throw new ForbiddenException('Você só pode editar suas próprias medidas');
     }
@@ -83,7 +88,7 @@ export class MedidasService {
     const inspecoesArray = parseInspecoes(numerosInspecao ?? numeroInspecao);
 
     const medidaAtualizada = await this.prisma.medida.update({
-      where: { id },
+      where: { id: Number(id) },
       data: {
         ...dataForPrisma,
         diasSuspensao: dto.diasSuspensao !== undefined
@@ -94,13 +99,14 @@ export class MedidasService {
     });
 
     if (files && files.length > 0) {
-      await this.processFiles(files, id);
+      await this.processFiles(files, Number(id));
     }
 
     return this.enrichMedida(medidaAtualizada);
   }
 
-  private async processFiles(files: Express.Multer.File[], medidaId: string) {
+  // Alterado: medidaId agora é explicitamente number para alinhar com o Schema
+  private async processFiles(files: Express.Multer.File[], medidaId: number) {
     for (const file of files) {
       const safeName = file.originalname.replace(/\s+/g, '_');
       const uniqueName = `${Date.now()}-${safeName}`;
@@ -112,7 +118,7 @@ export class MedidasService {
             nome: file.originalname,
             url: remotePath,
             tipo: file.mimetype,
-            medidaId: medidaId,
+            medidaId: medidaId, // Compatível com Int no banco/schema
           },
         });
       } catch (error) {
@@ -122,55 +128,56 @@ export class MedidasService {
   }
 
   async findAll(
-    userId: string,
-    role: string,
-    userUf: string,
-    userRegional: string,
-    ufs?: string[],
-    regionais?: string[],
-  ) {
-    const isAdmin = ['admin', 'adm', 'administrador'].includes(role.toLowerCase());
+  userId: string,
+  role: string,
+  userUf: string,
+  userRegional: string,
+  ufs?: string[],
+  regionais?: string[],
+) {
+  const isAdmin = ['admin', 'adm', 'administrador'].includes(role.toLowerCase());
+  
+  // Tipamos o where como Record<string, any> para ter controle total
+  const where: Record<string, any> = {};
 
-    const where: any = {};
-
-    if (!isAdmin) {
-      where.uf       = userUf;
-      where.regional = userRegional;
-    }
-
-    if (ufs && ufs.length > 0) {
-      if (isAdmin) {
-        where.uf = { in: ufs };
-      } else {
-        const ufsFiltradas = ufs.filter(u => u === userUf);
-        if (ufsFiltradas.length > 0) where.uf = { in: ufsFiltradas };
-      }
-    }
-
-    if (regionais && regionais.length > 0) {
-      if (isAdmin) {
-        where.regional = { in: regionais };
-      } else {
-        const regionaisFiltradas = regionais.filter(r => r === userRegional);
-        if (regionaisFiltradas.length > 0) where.regional = { in: regionaisFiltradas };
-      }
-    }
-
-    const medidas = await this.prisma.medida.findMany({
-      where,
-      include: {
-        anexos: true,
-        criadoPor: { select: { nome: true, uf: true, regional: true } },
-      },
-      orderBy: { data: 'desc' },
-    });
-
-    return medidas.map(m => this.enrichMedida(m));
+  if (!isAdmin) {
+    where.uf = userUf;
+    where.regional = userRegional;
   }
+
+  // Tratamento rigoroso para arrays de strings
+  if (ufs && ufs.length > 0) {
+    const ufsClean = isAdmin ? ufs : ufs.filter(u => u === userUf);
+    if (ufsClean.length > 0) {
+      where.uf = { in: ufsClean.map(u => String(u)) };
+    }
+  }
+
+  if (regionais && regionais.length > 0) {
+    const regionaisClean = isAdmin ? regionais : regionais.filter(r => r === userRegional);
+    if (regionaisClean.length > 0) {
+      where.regional = { in: regionaisClean.map(r => String(r)) };
+    }
+  }
+
+  // Execução da query
+  const medidas = await this.prisma.medida.findMany({
+    where,
+    include: {
+      anexos: true,
+      criadoPor: { 
+        select: { nome: true, uf: true, regional: true } 
+      },
+    },
+    orderBy: { data: 'desc' },
+  });
+
+  return medidas.map(m => this.enrichMedida(m));
+}
 
   async findOne(id: string) {
     const medida = await this.prisma.medida.findUnique({
-      where: { id },
+      where: { id: Number(id) },
       include: { anexos: true },
     });
     if (!medida) throw new NotFoundException(`Medida com ID ${id} não encontrada`);
@@ -178,14 +185,22 @@ export class MedidasService {
   }
 
   async remove(id: string, userId: string) {
-    const medida = await this.prisma.medida.findUnique({ where: { id } });
+    const medida = await this.prisma.medida.findUnique({ 
+      where: { id: Number(id) } 
+    });
     if (!medida) throw new NotFoundException('Medida não encontrada');
     if (medida.criadoPorId !== userId) throw new ForbiddenException('Você não tem permissão');
-    return this.prisma.medida.delete({ where: { id } });
+    
+    return this.prisma.medida.delete({ 
+      where: { id: Number(id) } 
+    });
   }
 
   async findAnexoById(id: string) {
-    const anexo = await this.prisma.medidaAnexo.findUnique({ where: { id } });
+    // Convertido para Number(id) para ser compatível com o Int do MedidaAnexo.id no banco
+    const anexo = await this.prisma.medidaAnexo.findUnique({ 
+      where: { id: Number(id) }
+    });
     if (!anexo) throw new NotFoundException('Anexo não encontrado no banco');
     return anexo;
   }

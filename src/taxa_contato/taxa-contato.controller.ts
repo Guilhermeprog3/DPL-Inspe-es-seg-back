@@ -11,7 +11,7 @@ import {
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
-import { TaxaContatoService } from './TaxaContatoService';
+import { TaxaContatoService } from './TaxaContatoService'; // Certifique-se de que o nome do arquivo está correto
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { GetUser } from '../auth/decorators/get-user.decorator';
 
@@ -20,7 +20,6 @@ import { GetUser } from '../auth/decorators/get-user.decorator';
 export class TaxaContatoController {
   constructor(private readonly taxaContatoService: TaxaContatoService) {}
 
-  // Listagem filtrada por regional/role — tabela principal
   @Get()
   async getTaxa(
     @GetUser() user: any,
@@ -38,22 +37,22 @@ export class TaxaContatoController {
     return this.taxaContatoService.findAll(queryFilters, user);
   }
 
-  // Listagem completa (sem filtro de regional) — modal de Associar
   @Get('todos')
   async getTodos(@GetUser() user: any) {
     return this.taxaContatoService.findAllForAssociation(user);
   }
 
-  // ── PATCH /:id — atualização genérica de campos (codsituacao, nome, etc.)
+  // Adicionado @GetUser() para o Log
   @Patch(':id')
   async updateOne(
     @Param('id', ParseIntPipe) id: number,
     @Body() body: Record<string, any>,
+    @GetUser() user: any, 
   ) {
-    return this.taxaContatoService.updateOne(id, body);
+    return this.taxaContatoService.updateOne(id, body, user);
   }
 
-  // Associar / transferir colaborador
+  // Adicionado @GetUser() para o Log
   @Patch(':id/assumir')
   async claim(
     @Param('id', ParseIntPipe) id: number,
@@ -65,25 +64,35 @@ export class TaxaContatoController {
       base?: string;
       regional?: string;
     },
+    @GetUser() user: any,
   ) {
-    return this.taxaContatoService.claimCollaborator(id, body);
+    return this.taxaContatoService.claimCollaborator(id, body, user);
   }
 
-  // Liberar colaborador sem supervisor
+  // Adicionado @GetUser() para o Log
   @Patch(':id/soltar')
-  async release(@Param('id', ParseIntPipe) id: number) {
-    return this.taxaContatoService.removeFromSupervision(id);
+  async release(
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser() user: any,
+  ) {
+    return this.taxaContatoService.removeFromSupervision(id, user);
   }
 
-  // Criar novo registro
+  // Adicionado @GetUser() para o Log
   @Post()
-  async create(@Body() body: Record<string, any>) {
-    return this.taxaContatoService.createOne(body);
+  async create(
+    @Body() body: Record<string, any>,
+    @GetUser() user: any,
+  ) {
+    return this.taxaContatoService.createOne(body, user);
   }
 
-  // Excluir registro
+  // Adicionado @GetUser() para o Log
   @Delete(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return this.taxaContatoService.deleteOne(id);
+  async remove(
+    @Param('id', ParseIntPipe) id: number,
+    @GetUser() user: any,
+  ) {
+    return this.taxaContatoService.deleteOne(id, user);
   }
 }
